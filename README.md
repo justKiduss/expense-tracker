@@ -1,36 +1,31 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Expense Tracker
 
-## Getting Started
+A privacy-first expense tracker for Ethiopia. It turns CBE and telebirr SMS
+messages into structured transactions, so only the minimum data needs to
+leave the user's phone.
 
-First, run the development server:
+## Status
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+Early development. Currently working:
+- SMS parser for CBE and telebirr (`src/lib/sms-parser`)
+- A simple page to paste a message and see the parsed result
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Planned: database and authentication, expense ledger, dashboard,
+Android SMS collector.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## How the parser works
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+`parseSms` is a pure function: SMS text in, one of three results out
+(`parsed`, `ignored`, `unknown`). Amounts are stored as integer cents,
+fees are separated from the principal, and an arithmetic check flags
+messages whose totals don't add up. Unrecognised messages are never guessed.
 
-## Learn More
+## Run locally
 
-To learn more about Next.js, take a look at the following resources:
+    npm install
+    npm run dev
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Privacy
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Test fixtures use fake names, numbers and transaction IDs. Never commit
+real messages.
