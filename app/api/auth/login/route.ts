@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { findUserByEmail } from '@/lib/service/user.service';
+import { findUserByEmail } from '@/lib/services/user.service';
 import { verifyPassword, DUMMY_HASH } from '@/lib/auth/password';
 import { createSession } from '@/lib/auth/session';
 

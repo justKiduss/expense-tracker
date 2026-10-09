@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from 'zod';
-import { createUser,findUserByEmail } from "@/lib/service/user.service";
+import { createUser,findUserByEmail } from "@/lib/services/user.service";
 
 const signupSchema = z.object({
     email:z.email(),
