@@ -4,6 +4,7 @@ export const users = pgTable('users', {
     id: uuid('id').primaryKey().defaultRandom(),
     email: text('email').notNull().unique(),
     passwordHash: text('password_hash').notNull(),
+    monthlyLimit: integer('monthly_limit'), // cents, null = no limit
     createdAt:timestamp('created_at', {withTimezone: true}).notNull().defaultNow(),
 });
 
@@ -16,12 +17,17 @@ export const accounts = pgTable('accounts', {
     createdAt:timestamp("created_at", { withTimezone:true}).notNull().defaultNow(),
 });
 
-export const categories = pgTable('categories', {
-    id:uuid('id').primaryKey().defaultRandom(),
-    userId:uuid('user_id').notNull().references(()=>users.id, {onDelete:"cascade"}),
-    name:text('name').notNull(),
-    createdAt:timestamp('created_at', {withTimezone:true}).notNull().defaultNow(),
-});
+export const categories = pgTable(
+  'categories',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    monthlyBudget: integer('monthly_budget'), // cents, null = no budget
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('categories_user_name_uq').on(t.userId, t.name)],
+);
 
 export const transations =pgTable('transactions',{
     id:uuid('id').primaryKey().defaultRandom(),
@@ -41,6 +47,7 @@ export const transations =pgTable('transactions',{
     occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull(),
     source: text('source').notNull().default('manual'), // 'manual' | 'sms'
     needsReview: boolean('needs_review').notNull().default(false),
+    isInternal: boolean('is_internal').notNull().default(false),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 },
    (t) => [
