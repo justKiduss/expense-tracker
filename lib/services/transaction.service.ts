@@ -3,6 +3,9 @@ import { db } from "@/lib/db"
 import { transations,categories } from "@/lib/db/schema";
 import type { ParsedTransaction } from "../sms-parser/parser";
 
+
+const ADDIS_OFFSET_MS = 3 * 60 * 60 * 1000; // UTC+3, no daylight saving
+
 export async function importParsedTransation(userId:string,tx:ParsedTransaction){
     const [row]=await db.insert(transations)
         .values({
@@ -99,4 +102,20 @@ export async function getCategoryBreakdown(userId: string, from: Date, to: Date)
     .groupBy(transations.categoryId);
 
   return rows.filter((r) => r.spent > 0); // categoryId null = uncategorized
+}
+
+
+/** This month in Addis Ababa time, as real instants, plus the days left in it. */
+export function currentMonthRange(now = new Date()) {
+  const local = new Date(now.getTime() + ADDIS_OFFSET_MS);
+  const y = local.getUTCFullYear();
+  const m = local.getUTCMonth();
+  const from = new Date(Date.UTC(y, m, 1) - ADDIS_OFFSET_MS);
+  const to = new Date(Date.UTC(y, m + 1, 1) - ADDIS_OFFSET_MS);
+  return {
+    from,
+    to,
+    label: new Date(Date.UTC(y, m, 1)).toLocaleString('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' }),
+    daysLeft: Math.max(1, Math.ceil((to.getTime() - now.getTime()) / 86_400_000)),
+  };
 }
