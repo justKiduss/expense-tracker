@@ -9,21 +9,22 @@ import TransactionList from '@/components/transaction-list';
 import SummaryCards from '@/components/summary-cards';
 import BudgetPanel from '@/components/budget-panel';
 import CategoryBreakdown from '@/components/category-breakdown';
-
+import { listDevices } from '@/lib/services/device.service';
+import DevicesPanel from '@/components/devices-panel';
 export default async function DashboardPage() {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
 
   const month = currentMonthRange();
 
-  const [items, summary, breakdown, categories, limit] = await Promise.all([
+  const [items, summary, breakdown, categories, limit, devices] = await Promise.all([
     listTransations(user.id),
     getSummary(user.id, month.from, month.to),
     getCategoryBreakdown(user.id, month.from, month.to),
     listCategories(user.id),
     getMonthlyLimit(user.id),
+    listDevices(user.id),
   ]);
-
   return (
     <main className="mx-auto max-w-2xl p-6">
       <div className="flex items-center justify-between">
@@ -37,6 +38,16 @@ export default async function DashboardPage() {
       <ImportForm />
       <CategoryBreakdown categories={categories} breakdown={breakdown} />
       <TransactionList items={items} categories={categories} />
+
+      <DevicesPanel
+          devices={devices.map((d) => ({
+            id: d.id,
+            name: d.name,
+            createdAt: d.createdAt.toISOString(),
+            lastSeenAt: d.lastSeenAt?.toISOString() ?? null,
+            revokedAt: d.revokedAt?.toISOString() ?? null,
+          }))}
+      />
     </main>
   );
 }
