@@ -41,9 +41,6 @@ export type ParseResult =
 
 // ---------- small building blocks ----------
 
-// Dear Test You have transferred ETB 130.00 to Person B (0922****01) on 29/09/2026 16:50:06. Your transaction number is DIT00AAA03. The service fee is  ETB 1.74 and  15% VAT on the service fee is ETB 0.26. Your current E-Money Account  balance is ETB 1.40.`;
-
-
 // "1,000.00", "100.0", "5", "65.20"
 const NUM = String.raw`[\d,]+(?:\.\d+)?`;
 // "ETB 130.00" and "ETB130.00" (both appear in real messages)
@@ -138,6 +135,14 @@ const rules: Rule[] = [
     pattern: new RegExp(String.raw`You have repaid (?<amount>${NUM}) ETB, for your (?<what>.+?) contract\.`),
   },
   {
+    // second wording of a repayment: "your outstanding Credit amount has been paid successfully"
+    name: 'telebirr_credit_paid',
+    institution: 'TELEBIRR', kind: 'loan_repayment', direction: 'out',
+    pattern: new RegExp(
+      String.raw`your outstanding Credit amount has been paid successfully\. The paid amount is ${etb('amount')}`,
+    ),
+  },
+  {
     name: 'telebirr_loan_received',
     institution: 'TELEBIRR', kind: 'loan_received', direction: 'in',
     pattern: new RegExp(
@@ -201,6 +206,9 @@ export function parseSms({ body, receivedAt }: SmsInput): ParseResult {
   for (const ig of ignoreRules) {
     if (ig.pattern.test(text)) return { status: 'ignored', reason: ig.reason };
   }
+  // Awareness messages, greetings and OTPs mention no money at all. "Unknown" is kept for
+  // messages that DO mention money but match no rule, because those are the ones worth a look.
+  if (!/ETB|ብር/.test(text)) return { status: 'ignored', reason: 'not_financial' };
   return { status: 'unknown' }; // never guess
 }
 
