@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from 'zod';
 import { createUser,findUserByEmail } from "@/lib/services/user.service";
+import { clientIp, rateLimit, tooMany } from '@/lib/rate-limit';
 
 const signupSchema = z.object({
     email:z.email(),
@@ -10,6 +11,8 @@ const signupSchema = z.object({
 export async function POST(request:Request){
     const body=await request.json().catch(()=>null);
     const parsed = signupSchema.safeParse(body);
+    if (!(await rateLimit(`signup:ip:${clientIp(request)}`, 5, 3600)).allowed) return tooMany();
+
     if(!parsed.success){
         return NextResponse.json({error:'Invalid email or password'}, {status :400});
     }
