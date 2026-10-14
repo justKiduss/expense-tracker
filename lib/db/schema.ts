@@ -48,6 +48,8 @@ export const transations =pgTable('transactions',{
     source: text('source').notNull().default('manual'), // 'manual' | 'sms'
     needsReview: boolean('needs_review').notNull().default(false),
     isInternal: boolean('is_internal').notNull().default(false),
+    institution: text('institution'),
+    transferPairId: uuid('transfer_pair_id'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 },
    (t) => [

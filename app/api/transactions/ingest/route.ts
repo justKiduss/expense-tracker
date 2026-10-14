@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getRequestUser } from '@/lib/auth/request-user';
 import { importParsedTransation } from '@/lib/services/transaction.service';
-
+import { matchInternalTransfers } from '@/lib/services/transfer.service';
 const money = z.number().int().min(0).max(100_000_000_000);
 
 const item = z.object({
@@ -35,6 +35,12 @@ export async function POST(request: Request) {
   for (const tx of parsed.data.transactions) {
     const saved = await importParsedTransation(user.id, tx);
     results.push({ dedupeKey: tx.dedupeKey, status: saved ? 'created' : 'duplicate' });
+  }
+  try { 
+    await matchInternalTransfers(user.id); 
+  } 
+  catch (e) {
+     console.error('transfer matching failed', e); 
   }
   return NextResponse.json({ results });
 }

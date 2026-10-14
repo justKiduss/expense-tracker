@@ -73,7 +73,7 @@ export default function TransactionRow({ tx, categories }: { tx: RowTx; categori
                 patch({ isInternal: e.target.checked }, () => setIsInternal(prev));
               }}
             />
-            My own transfer
+            Exclude from totals
           </label>
           {error && <span className="text-xs text-red-500">{error}</span>}
         </div>

@@ -23,6 +23,7 @@ export async function importParsedTransation(userId:string,tx:ParsedTransaction)
             occurredAt:new Date(tx.occurredAt),
             source:'sms',
             needsReview:tx.needsReview,
+            institution: tx.institution,
         })
         .onConflictDoNothing({target:[transations.userId, transations.dedupeKey] })
         .returning();
@@ -49,11 +50,13 @@ export async function createTransaction(userId:string,input:NewTransactionInput)
          return row;
 }
 
-export async function listTransations(userId:string,limit=50){
-    return db.select().from(transations)
-        .where(eq(transations.userId, userId)) // the ownership rule
-        .orderBy(desc(transations.occurredAt))
-        .limit(limit);
+export async function listTransactions(userId: string, range: { from: Date; to: Date }, limit = 300) {
+  return db
+    .select()
+    .from(transations)
+    .where(and(eq(transations.userId, userId), gte(transations.occurredAt, range.from), lt(transations.occurredAt, range.to)))
+    .orderBy(desc(transations.occurredAt))
+    .limit(limit);
 }
 
 export async function updateTransactionMeta(
