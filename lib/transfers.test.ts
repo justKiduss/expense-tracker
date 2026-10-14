@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { pairTransfers, type Candidate } from './transfers.ts';
+import { pairTransfers, type Candidate } from './transfers';
 
 const MIN = 60 * 1000;
 const T0 = Date.UTC(2026, 9, 11, 20, 37, 0);
