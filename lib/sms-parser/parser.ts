@@ -80,7 +80,7 @@ function maskPhone(s: string): string {
 }
 
 function findBalance(text: string): number | null {
-  const m = text.match(new RegExp(String.raw`current (?:E-Money Account )?balance is ETB\s*(${NUM})`, 'i'));
+  const m = text.match(new RegExp(String.raw`current (?:E-Money )?(?:Account )?balance is ETB\s*(${NUM})`, 'i'));
   return m ? toMinor(m[1]) : null;
 }
 
@@ -104,6 +104,7 @@ interface Rule {
   direction: Direction;
   pattern: RegExp;
   maskParty?: boolean; // the "party" is a phone number: store it masked
+  description?: string; // used when the message itself has no description
 }
 
 const rules: Rule[] = [
@@ -155,7 +156,25 @@ const rules: Rule[] = [
     name: 'telebirr_transfer_out_fee_incl_vat',
     institution: 'TELEBIRR', kind: 'transfer_out', direction: 'out',
     pattern: new RegExp(
-      String.raw`You have transferred ${etb('amount')} to (?<party>.+?)\s*\([^)]*\) on (?<date>${DATE})\. Your transaction number is (?<ref>[A-Z0-9]+)\. The service fee \(including \d+% VAT\) is (?<fees>ETB.+?)\. Your current`,
+      String.raw`You have transferred ${etb('amount')} to (?<party>.+?)\s*\([^)]*\) on (?<date>${DATE})\. Your transaction number is (?<ref>[A-Z0-9]+)\. The service fee ?\(including \d+% VAT\) is (?<fees>ETB.+?)\. Your current`,
+    ),
+  },
+  {
+    // cash withdrawal at a telebirr agent
+    name: 'telebirr_agent_withdrawal',
+    institution: 'TELEBIRR', kind: 'payment', direction: 'out',
+    description: 'Cash withdrawal at telebirr agent',
+    pattern: new RegExp(
+      String.raw`Your telebirr account \d+ has been debited with ${etb('amount')} on (?<date>${DATE}) at telebirr Agent \d+\. Your transaction number is (?<ref>[A-Z0-9]+)\. The service fee is (?<fees>ETB.+?)\. Your current`,
+    ),
+  },
+  {
+    // a deposit to a merchant or payment company
+    name: 'telebirr_deposit_to_merchant',
+    institution: 'TELEBIRR', kind: 'payment', direction: 'out',
+    description: 'Deposit to merchant',
+    pattern: new RegExp(
+      String.raw`You have deposited ${etb('amount')}\s+to \d+ - (?<party>.+?) on (?<date>${DATE})\. Your transaction number is (?<ref>[A-Z0-9]+)\.`,
     ),
   },
   {
@@ -242,21 +261,21 @@ const rules: Rule[] = [
     // the simplest wording: just the amount and the new balance (no charges listed)
     name: 'cbe_debited_simple',
     institution: 'CBE', kind: 'debit', direction: 'out',
-    pattern: new RegExp(String.raw`has been debited with ${etb('amount')}\s*\.\s*Your Current Balance`),
+    pattern: new RegExp(String.raw`has been debited with ${etb('amount')}\s*\.?\s*Your Current Balance`),
   },
   {
     // the monthly mobile-banking fee. The VAT is already inside the amount, so no extra fee is added.
     name: 'cbe_debited_service_fee',
     institution: 'CBE', kind: 'debit', direction: 'out',
     pattern: new RegExp(
-      String.raw`has been debited with ${etb('amount')}\s*\.\s*Info: (?<what>.+?) including VAT\(\d+%\) ETB\s*${NUM}\s*\.\s*Your Current Balance`,
+      String.raw`has been debited with ${etb('amount')}\s*\.\s*Info: (?<what>.+?)(?: including VAT\(\d+%\) ETB\s*${NUM})?\s*\.\s*Your Current Balance`,
     ),
   },
   {
     // "credited with" names no sender (as opposed to "credited by NAME")
     name: 'cbe_credited_with',
     institution: 'CBE', kind: 'credit', direction: 'in',
-    pattern: new RegExp(String.raw`has been credited with ${etb('amount')}\s*\.`),
+    pattern: new RegExp(String.raw`has been [Cc]redited with ${etb('amount')}\s*\.`),
   },
   {
     // a transfer to a person, with the date and time inside the message
@@ -290,7 +309,7 @@ export function parseSms({ body, receivedAt }: SmsInput): ParseResult {
   }
   // Awareness messages, greetings and OTPs mention no money at all. "Unknown" is kept for
   // messages that DO mention money but match no rule, because those are the ones worth a look.
-  if (!/ETB|(?<![\u1200-\u137F])ብር(?![\u1200-\u137F])/.test(text)) return { status: 'ignored', reason: 'not_financial' };
+  if (!text.includes('ETB')) return { status: 'ignored', reason: 'not_financial' };
   return { status: 'unknown' }; // never guess
 }
 
@@ -336,7 +355,7 @@ function build(rule: Rule, g: Record<string, string | undefined>, text: string, 
     currency: 'ETB',
     balanceAfter,
     counterparty: g.party ? (rule.maskParty ? maskPhone(g.party.trim()) : g.party.trim()) : null,
-    description: g.what?.trim() ?? null,
+    description: g.what?.trim() ?? rule.description ?? null,
     reference,
     occurredAt,
     dateSource: bodyDate ? 'sms_body' : 'received_at',

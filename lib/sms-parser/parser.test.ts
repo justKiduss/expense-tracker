@@ -239,6 +239,38 @@ const fixtures: Fixture[] = [
     ignored: 'not_financial',
     body: `እንኳን ለብርሃነ ትንሣኤው በሰላም አደረሰዎ። በዓሉ የሰላም እና የደስታ ይሁንልዎ ! https://example.et/card`,
   },
+
+  // ----- third batch: punctuation variants and two new telebirr types -----
+  {
+    name: 'telebirr transfer with "fee(including" and no space',
+    body: `Dear kaleab\nYou have transferred ETB 130.00 to yonas addisu(251911223344) on 09/10/2026 16:18:00. Your transaction number is CA0000K0SH. The service fee(including 15% VAT) is ETB 2.00. Your current E-Money Account  balance is ETB 31.40. To download your payment information please click this link: https://transactioninfo.ethiotelecom.et/receipt/CA0000K0SH\nThank you for using telebirr\nEthio telecom`,
+    expect: { kind: 'transfer_out', amount: 13000, fee: 200, balanceAfter: 3140, counterparty: 'yonas addisu', reference: 'CA0000K0SH' },
+  },
+  {
+    name: 'CBE monthly fee without a VAT part',
+    body: `Dear Customer your Account 1********1234 has been debited with ETB 5. Info: Mobile Banking Monthly Service Fee. Your Current Balance is ETB 1234.00. Thank you for Banking with CBE!. Please give us your feedback by clicking the link below (ስላገኙት አገልግሎት የሚከተለውን ማስፈንጠሪያ በመጫን አስተያየቶን ይስጡን።)https://shorturl.at/XY`,
+    expect: { kind: 'debit', amount: 500, fee: 0, balanceAfter: 123400, description: 'Mobile Banking Monthly Service Fee' },
+  },
+  {
+    name: 'telebirr cash withdrawal at an agent',
+    body: `Dear kaleab\nYour telebirr account 251911223344 has been debited with ETB 500.00 on 10/10/2026 12:00:00 at telebirr Agent 123456. Your transaction number is CGP1Q2H3HC. The service fee is  ETB 5.00 and  15% VAT on the service fee is ETB 0.75. Your current Account balance is ETB 20.00. To download your payment information please click this link: https://transactioninfo.ethiotelecom.et/receipt/CGP1Q2H3HC\nThank you for using telebirr\nEthio telecom`,
+    expect: { institution: 'TELEBIRR', kind: 'payment', direction: 'out', amount: 50000, fee: 575, balanceAfter: 2000, reference: 'CGP1Q2H3HC', description: 'Cash withdrawal at telebirr agent', occurredAt: '2026-10-10T12:00:00+03:00' },
+  },
+  {
+    name: 'telebirr deposit to a merchant',
+    body: `Dear kaleab teshome\nYou have deposited ETB 200.00  to 123456 - FenanPay Solutions S C on 11/10/2026 13:00:00. Your transaction number is CIJ1X2JDT3. Your current balance is ETB 90.00. To download your payment information please click this link: https://transactioninfo.ethiotelecom.et/receipt/CIJ1X2JDT3\nThank you for using telebirr\nEthio telecom`,
+    expect: { kind: 'payment', direction: 'out', amount: 20000, balanceAfter: 9000, counterparty: 'FenanPay Solutions S C', reference: 'CIJ1X2JDT3', description: 'Deposit to merchant' },
+  },
+  {
+    name: 'CBE simple debit with no full stop after the amount',
+    body: `Dear Kidus your Account 1*********1234 has been debited with ETB 1,200.00 Your Current Balance is ETB 800.00. Thank you for Banking with CBE! https://shorturl.at/AB`,
+    expect: { kind: 'debit', amount: 120000, fee: 0, balanceAfter: 80000 },
+  },
+  {
+    name: 'CBE "Credited" with a capital C and no full stop before Thank you',
+    body: `Dear Kidus your Account 1*********1234 has been Credited with ETB 500.00. Your Current Balance is ETB 1,500.00 Thank you for Banking with CBE! https://shorturl.at/AB`,
+    expect: { kind: 'credit', direction: 'in', amount: 50000, balanceAfter: 150000 },
+  },
 ];
 
 const at = (i: number) => new Date(Date.UTC(2026, 9, 2, 12, 0, i)); // distinct SMS time per message
@@ -284,10 +316,10 @@ test('messages with no money in them are ignored as not financial', () => {
   assert.deepEqual(parseSms({ body: 'Hi, are we still on for tomorrow?', receivedAt: at(0) }), { status: 'ignored', reason: 'not_financial' });
 });
 
-test('an Amharic message with a standalone "birr" word is kept as unknown so it can be reviewed', () => {
+test('an Amharic promotion is not financial: every real transaction message carries an ETB amount', () => {
   assert.deepEqual(
     parseSms({ body: 'መኪና ይሸለሙ! ከ5000 ብር በላይ ግብይት ለሚፈፅሙ እድለኞች', receivedAt: at(0) }),
-    { status: 'unknown' },
+    { status: 'ignored', reason: 'not_financial' },
   );
 });
 
