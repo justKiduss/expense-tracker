@@ -151,6 +151,14 @@ const rules: Rule[] = [
     ),
   },
   {
+    // fee quoted as one amount that already includes VAT, and the phone number in brackets
+    name: 'telebirr_transfer_out_fee_incl_vat',
+    institution: 'TELEBIRR', kind: 'transfer_out', direction: 'out',
+    pattern: new RegExp(
+      String.raw`You have transferred ${etb('amount')} to (?<party>.+?)\s*\([^)]*\) on (?<date>${DATE})\. Your transaction number is (?<ref>[A-Z0-9]+)\. The service fee \(including \d+% VAT\) is (?<fees>ETB.+?)\. Your current`,
+    ),
+  },
+  {
     name: 'telebirr_package_subscription',
     institution: 'TELEBIRR', kind: 'payment', direction: 'out',
     pattern: new RegExp(
@@ -231,6 +239,20 @@ const rules: Rule[] = [
     ),
   },
   {
+    // the simplest wording: just the amount and the new balance (no charges listed)
+    name: 'cbe_debited_simple',
+    institution: 'CBE', kind: 'debit', direction: 'out',
+    pattern: new RegExp(String.raw`has been debited with ${etb('amount')}\s*\.\s*Your Current Balance`),
+  },
+  {
+    // the monthly mobile-banking fee. The VAT is already inside the amount, so no extra fee is added.
+    name: 'cbe_debited_service_fee',
+    institution: 'CBE', kind: 'debit', direction: 'out',
+    pattern: new RegExp(
+      String.raw`has been debited with ${etb('amount')}\s*\.\s*Info: (?<what>.+?) including VAT\(\d+%\) ETB\s*${NUM}\s*\.\s*Your Current Balance`,
+    ),
+  },
+  {
     // "credited with" names no sender (as opposed to "credited by NAME")
     name: 'cbe_credited_with',
     institution: 'CBE', kind: 'credit', direction: 'in',
@@ -249,6 +271,8 @@ const rules: Rule[] = [
 // Messages we recognise on purpose and deliberately do not turn into transactions.
 const ignoreRules: { reason: string; pattern: RegExp }[] = [
   { reason: 'loan_overdue_notice', pattern: /outstanding credit balance of ETB .+ overdue/ },
+  { reason: 'loan_overdue_notice', pattern: /outstanding telebirr mela .+ overdue/ },
+  { reason: 'loan_reminder', pattern: /pay your credit within the remaining/ },
   { reason: 'wrong_pin', pattern: /your PIN or password is incorrect/i },
 ];
 
@@ -266,7 +290,7 @@ export function parseSms({ body, receivedAt }: SmsInput): ParseResult {
   }
   // Awareness messages, greetings and OTPs mention no money at all. "Unknown" is kept for
   // messages that DO mention money but match no rule, because those are the ones worth a look.
-  if (!/ETB|ብር/.test(text)) return { status: 'ignored', reason: 'not_financial' };
+  if (!/ETB|(?<![\u1200-\u137F])ብር(?![\u1200-\u137F])/.test(text)) return { status: 'ignored', reason: 'not_financial' };
   return { status: 'unknown' }; // never guess
 }
 

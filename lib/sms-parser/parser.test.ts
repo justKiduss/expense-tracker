@@ -202,6 +202,43 @@ const fixtures: Fixture[] = [
     body: `Dear Kidus,\nYou have transferred ETB 500.00 successfully from your telebirr account 251911223344 to Commercial Bank of Ethiopia account number 1000123456789 on 08/10/2026 12:00:00. Your telebirr transaction number is CDN1VNVLCG and your bank transaction number is FT26281TC12K. The service fee is ETB 1.74 and  15% VAT on the service fee is ETB 0.26. Your current balance is ETB 300.40. To download your payment information please click this link: https://transactioninfo.ethiotelecom.et/receipt/CDN1VNVLCG\nThank you for using telebirr\nEthio telecom`,
     expect: { institution: 'TELEBIRR', kind: 'transfer_out', direction: 'out', amount: 50000, fee: 200, balanceAfter: 30040, counterparty: 'Commercial Bank of Ethiopia', reference: 'CDN1VNVLCG', occurredAt: '2026-10-08T12:00:00+03:00' },
   },
+
+  // ----- second batch of formats from the same phone -----
+  {
+    name: 'CBE simple debit (amount and balance only)',
+    body: `Dear Kidus your Account 1*********1234 has been debited with ETB 100.00. Your Current Balance is ETB 20.00 Thank you for Banking with CBE! https://shorturl.at/AB`,
+    expect: { institution: 'CBE', kind: 'debit', direction: 'out', amount: 10000, fee: 0, balanceAfter: 2000, reference: null, needsReview: false },
+  },
+  {
+    name: 'CBE simple debit with no decimals and "Mr"',
+    body: `Dear Mr Kidus your Account 1********1234 has been debited with ETB 450. Your Current Balance is ETB 1000.00. Thank you for Banking with CBE!. For feedback https://shorturl.at/AB`,
+    expect: { kind: 'debit', amount: 45000, fee: 0, balanceAfter: 100000 },
+  },
+  {
+    name: 'CBE monthly mobile banking fee',
+    body: `Dear Customer your Account 1********1234 has been debited with ETB 5.75. Info: Mobile Banking Monthly Service Fee including VAT(15%) ETB0.75. Your Current Balance is ETB 120. Thank you for Banking with CBE!. Please give us your feedback by clicking the link below (ስላገኙት አገልግሎት የሚከተለውን ማስፈንጠሪያ በመጫን አስተያየቶን ይስጡን።)https://shorturl.at/XY`,
+    expect: { kind: 'debit', direction: 'out', amount: 575, fee: 0, balanceAfter: 12000, description: 'Mobile Banking Monthly Service Fee' },
+  },
+  {
+    name: 'telebirr transfer with the fee quoted as one amount including VAT',
+    body: `Dear kaleab\nYou have transferred ETB 130.00 to Person Y(251911223344) on 09/10/2026 16:18:00. Your transaction number is CAS1I2Q3W4. The service fee (including 15% VAT) is  ETB 2.00. Your current E-Money Account  balance is ETB 31.40. To download your payment information please click this link: https://transactioninfo.ethiotelecom.et/receipt/CAS1I2Q3W4\nThank you for using telebirr\nEthio telecom`,
+    expect: { kind: 'transfer_out', direction: 'out', amount: 13000, fee: 200, balanceAfter: 3140, counterparty: 'Person Y', reference: 'CAS1I2Q3W4', occurredAt: '2026-10-09T16:18:00+03:00' },
+  },
+  {
+    name: 'telebirr mela overdue notice',
+    ignored: 'loan_overdue_notice',
+    body: `Dear Kidus,\nYour outstanding telebirr mela for 30 day credit balance of ETB 120.00 is 2 days overdue. Please pay promptly to keep your credit limit & save yourself from unnecessary legal charge, hassles, and additional fees\n\nThank you for using telebirr\nEthio telecom in partnership with Dashen Bank`,
+  },
+  {
+    name: 'telebirr credit reminder',
+    ignored: 'loan_reminder',
+    body: `Dear Kidus,\nYour outstanding credit balance is ETB 120.00 on 10/10/2026. Please deposit to your wallet account and pay your credit within the remaining 3 day to avoid the 0.50% daily penalty fee.\n\nThank you for using telebirr\nEthio telecom in partnership with Dashen Bank`,
+  },
+  {
+    name: 'Amharic greeting whose word merely contains the letters of "birr" is not financial',
+    ignored: 'not_financial',
+    body: `እንኳን ለብርሃነ ትንሣኤው በሰላም አደረሰዎ። በዓሉ የሰላም እና የደስታ ይሁንልዎ ! https://example.et/card`,
+  },
 ];
 
 const at = (i: number) => new Date(Date.UTC(2026, 9, 2, 12, 0, i)); // distinct SMS time per message
@@ -225,7 +262,7 @@ for (const [i, f] of fixtures.entries()) {
 test('every real-shaped message is either parsed or deliberately ignored', () => {
   const results = fixtures.map((f, i) => parseSms({ body: f.body, receivedAt: at(i) }));
   assert.equal(results.filter((r) => r.status === 'unknown').length, 0);
-  assert.equal(results.filter((r) => r.status === 'parsed').length, fixtures.length - 5);
+  assert.equal(results.filter((r) => r.status === 'parsed').length, fixtures.length - 8);
 });
 
 test('dedupe keys are unique, including the two identical "debited 100.42" texts', () => {
@@ -245,6 +282,13 @@ test('same SMS parsed twice gives the same dedupe key', () => {
 test('messages with no money in them are ignored as not financial', () => {
   assert.deepEqual(parseSms({ body: 'Your OTP is 123456. Do not share it.', receivedAt: at(0) }), { status: 'ignored', reason: 'not_financial' });
   assert.deepEqual(parseSms({ body: 'Hi, are we still on for tomorrow?', receivedAt: at(0) }), { status: 'ignored', reason: 'not_financial' });
+});
+
+test('an Amharic message with a standalone "birr" word is kept as unknown so it can be reviewed', () => {
+  assert.deepEqual(
+    parseSms({ body: 'መኪና ይሸለሙ! ከ5000 ብር በላይ ግብይት ለሚፈፅሙ እድለኞች', receivedAt: at(0) }),
+    { status: 'unknown' },
+  );
 });
 
 test('a message that mentions money but matches no rule is unknown, never guessed', () => {
