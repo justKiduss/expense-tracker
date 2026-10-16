@@ -80,7 +80,7 @@ function maskPhone(s: string): string {
 }
 
 function findBalance(text: string): number | null {
-  const m = text.match(new RegExp(String.raw`current (?:E-Money )?(?:Account )?balance is ETB\s*(${NUM})`, 'i'));
+  const m = text.match(new RegExp(String.raw`(?:current|telebirr account) (?:E-Money |telebirr )?(?:Account )?balance is ETB\s*(${NUM})`, 'i'));
   return m ? toMinor(m[1]) : null;
 }
 
@@ -105,6 +105,8 @@ interface Rule {
   pattern: RegExp;
   maskParty?: boolean; // the "party" is a phone number: store it masked
   description?: string; // used when the message itself has no description
+  forceReview?: boolean; // the message is incomplete or odd: always flag it for review
+  feeFromTotal?: boolean; // the charges are not listed, only the total: fee = total - amount
 }
 
 const rules: Rule[] = [
@@ -178,6 +180,36 @@ const rules: Rule[] = [
     ),
   },
   {
+    // payment to an organisation, e.g. school fees
+    name: 'telebirr_payment_to_organisation',
+    institution: 'TELEBIRR', kind: 'payment', direction: 'out',
+    pattern: new RegExp(
+      String.raw`You have paid ${etb('amount')} for (?<what>.+?) to \d+ - (?<party>.+?) on (?<date>${DATE})\.\s*Your transaction number is (?<ref>[A-Z0-9]+)\. The service fee is (?<fees>ETB.+?)\. Your current`,
+    ),
+  },
+  {
+    name: 'telebirr_bill_payment',
+    institution: 'TELEBIRR', kind: 'payment', direction: 'out',
+    description: 'Bill payment',
+    pattern: new RegExp(
+      String.raw`You have paid ${etb('amount')} to pay bill for \d+ on (?<date>${DATE})\.\s*Your transaction number is (?<ref>[A-Z0-9]+)\.`,
+    ),
+  },
+  {
+    // a prize. We cannot be sure it was credited to the wallet, so it is always flagged for review.
+    name: 'telebirr_prize',
+    institution: 'TELEBIRR', kind: 'transfer_in', direction: 'in', forceReview: true,
+    pattern: new RegExp(String.raw`Congratulations, you have won ${etb('amount')}\s+as the (?<what>.+?)!`),
+  },
+  {
+    // the disaster-risk levy taken on a telebirr loan: a cost of the loan
+    name: 'telebirr_loan_levy',
+    institution: 'TELEBIRR', kind: 'payment', direction: 'out',
+    pattern: new RegExp(
+      String.raw`You have paid ${etb('amount')} for (?<what>Ethiopian Disaster Risk Management fund) \(\d+% of your loan amount\)`,
+    ),
+  },
+  {
     name: 'telebirr_package_subscription',
     institution: 'TELEBIRR', kind: 'payment', direction: 'out',
     pattern: new RegExp(
@@ -185,11 +217,11 @@ const rules: Rule[] = [
     ),
   },
   {
-    // telebirr -> CBE: moving your own money back to the bank
-    name: 'telebirr_to_cbe',
+    // telebirr -> a bank (CBE: your own money back to the bank; others: kept as an ordinary transfer)
+    name: 'telebirr_to_bank',
     institution: 'TELEBIRR', kind: 'transfer_out', direction: 'out',
     pattern: new RegExp(
-      String.raw`You have transferred ${etb('amount')} successfully from your telebirr account \d+ to (?<party>Commercial Bank of Ethiopia) account number \d+ on (?<date>${DATE})\. Your telebirr transaction number is (?<ref>[A-Z0-9]+) and your bank transaction number is [A-Z0-9]+\. The service fee is (?<fees>ETB.+?)\. Your current balance`,
+      String.raw`You have transferred ${etb('amount')} successfully from your telebirr account \d+ to (?<party>.+?) account number \d+ on (?<date>${DATE})\. Your telebirr transaction number is (?<ref>[A-Z0-9]+) and your bank transaction number is [A-Za-z0-9]+\. The service fee (?:\([Ii]ncluding \d+% VAT\) )?is (?<fees>ETB.+?)\. Your current balance`,
     ),
   },
   {
@@ -272,6 +304,50 @@ const rules: Rule[] = [
     ),
   },
   {
+    name: 'cbe_atm_withdrawal',
+    institution: 'CBE', kind: 'debit', direction: 'out',
+    description: 'ATM withdrawal',
+    pattern: new RegExp(String.raw`has been debited for ATM NO\. \d+ with ${etb('amount')}\s*\.\s*Your Current Balance`),
+  },
+  {
+    // the charges are mentioned but their amounts are not: only the total is printed
+    name: 'cbe_debited_charges_not_itemised',
+    institution: 'CBE', kind: 'debit', direction: 'out', feeFromTotal: true,
+    pattern: new RegExp(
+      String.raw`has been debited with ${etb('amount')}\s*\.\s*Including Service charge and VAT\(\d+%\) with a total of ${etb('total')}`,
+    ),
+  },
+  {
+    // a message whose charge amounts are blank: the fee is unknown, so it is flagged
+    name: 'cbe_debited_charges_blank',
+    institution: 'CBE', kind: 'debit', direction: 'out', forceReview: true,
+    pattern: new RegExp(
+      String.raw`has been debited with ${etb('amount')}\s*\.\s*Service charge of\s+and VAT\(\d+%\) of\s*\.\s*Your Current Balance`,
+    ),
+  },
+  {
+    // "debited for NAME with ETB total including charges": a payment to a named person
+    name: 'cbe_debited_for_recipient',
+    institution: 'CBE', kind: 'transfer_out', direction: 'out',
+    pattern: new RegExp(
+      String.raw`has been debited for (?<party>.+?) with ${etb('total')} including (?<fees>.+?)\. Your Current Balance`,
+    ),
+  },
+  {
+    // old wording with the charges listed but no "with a total of" clause
+    name: 'cbe_debited_old_wording_no_total',
+    institution: 'CBE', kind: 'debit', direction: 'out',
+    pattern: new RegExp(
+      String.raw`has been debited with ${etb('amount')}\s*\.\s*Service charge of (?<fees>.+?)\.\s*Your Current Balance`,
+    ),
+  },
+  {
+    // a transfer message that ends right after the recipient's name (a cut-off message): flagged
+    name: 'cbe_transfer_out_cut_off',
+    institution: 'CBE', kind: 'transfer_out', direction: 'out', forceReview: true,
+    pattern: new RegExp(String.raw`^Dear [^,]+, You have transferr?ed ${etb('amount')} to (?<party>[^.]+?)\s*$`),
+  },
+  {
     // "credited with" names no sender (as opposed to "credited by NAME")
     name: 'cbe_credited_with',
     institution: 'CBE', kind: 'credit', direction: 'in',
@@ -292,6 +368,10 @@ const ignoreRules: { reason: string; pattern: RegExp }[] = [
   { reason: 'loan_overdue_notice', pattern: /outstanding credit balance of ETB .+ overdue/ },
   { reason: 'loan_overdue_notice', pattern: /outstanding telebirr mela .+ overdue/ },
   { reason: 'loan_reminder', pattern: /pay your credit within the remaining/ },
+  { reason: 'loan_reminder', pattern: /outstanding telebirr mela .+ is due TODAY/ },
+  { reason: 'atm_withdraw_code', pattern: /ATM withdraw secret code/ }, // a one-time code: never stored
+  { reason: 'promotion', pattern: /YeGena Chewata/ },
+  { reason: 'failed_transaction', pattern: /insufficient balance for the requested transaction/ },
   { reason: 'wrong_pin', pattern: /your PIN or password is incorrect/i },
 ];
 
@@ -302,7 +382,12 @@ export function parseSms({ body, receivedAt }: SmsInput): ParseResult {
 
   for (const rule of rules) {
     const m = rule.pattern.exec(text);
-    if (m?.groups) return { status: 'parsed', tx: build(rule, m.groups, text, receivedAt) };
+    if (m?.groups) {
+      const tx = build(rule, m.groups, text, receivedAt);
+      // a message that moves no money at all (for example a 0% levy) is not a transaction
+      if (tx.amount === 0 && tx.fee === 0) return { status: 'ignored', reason: 'zero_amount' };
+      return { status: 'parsed', tx };
+    }
   }
   for (const ig of ignoreRules) {
     if (ig.pattern.test(text)) return { status: 'ignored', reason: ig.reason };
@@ -314,12 +399,13 @@ export function parseSms({ body, receivedAt }: SmsInput): ParseResult {
 }
 
 function build(rule: Rule, g: Record<string, string | undefined>, text: string, receivedAt: Date): ParsedTransaction {
-  const fee = g.fee ? toMinor(g.fee) : g.fees ? sumMoney(g.fees) : 0;
+  let fee = g.fee ? toMinor(g.fee) : g.fees ? sumMoney(g.fees) : 0;
 
   let amount: number;
   let needsReview = false;
   if (g.amount) {
     amount = toMinor(g.amount);
+    if (rule.feeFromTotal && g.total && toMinor(g.total) >= amount) fee = toMinor(g.total) - amount;
     // self-check: principal + fees must equal the total the bank printed
     if (g.total) {
       const total = toMinor(g.total);
@@ -334,6 +420,7 @@ function build(rule: Rule, g: Record<string, string | undefined>, text: string, 
     if (amount <= 0) needsReview = true;
   }
 
+  if (rule.forceReview) needsReview = true;
   const balanceAfter = findBalance(text);
   const reference = g.ref ?? (rule.institution === 'CBE' ? findCbeReceiptId(text) : null);
   const bodyDate = g.date ? parseDate(g.date) : null;

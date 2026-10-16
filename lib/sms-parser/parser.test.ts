@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseSms, toMinor, type ParsedTransaction } from './parser';
+import { parseSms, toMinor, type ParsedTransaction } from './parser.ts';
 
 // Fixtures keep the exact wording, spacing, typos and number formats of real messages.
 // Names, phone numbers, account digits and transaction ids are replaced with fake ones
@@ -271,6 +271,95 @@ const fixtures: Fixture[] = [
     body: `Dear Kidus your Account 1*********1234 has been Credited with ETB 500.00. Your Current Balance is ETB 1,500.00 Thank you for Banking with CBE! https://shorturl.at/AB`,
     expect: { kind: 'credit', direction: 'in', amount: 50000, balanceAfter: 150000 },
   },
+
+  // ----- fourth batch: the last odd ones -----
+  {
+    name: 'telebirr payment to an organisation (school fees), no space after the date',
+    body: `Dear kaleab\nYou have paid ETB 5,000.00 for education payment to 123456 - Unity Univesity on 12/10/2026 10:00:00.Your transaction number is BCS1IKEV2M. The service fee is ETB 0.00. Your current balance is ETB 90.00.\nTo download your payment information please click this link: https://transactioninfo.ethiotelecom.et/receipt/BCS1IKEV2M\nThank you for using telebirr\nEthio telecom`,
+    expect: { kind: 'payment', direction: 'out', amount: 500000, fee: 0, balanceAfter: 9000, counterparty: 'Unity Univesity', description: 'education payment', reference: 'BCS1IKEV2M', occurredAt: '2026-10-12T10:00:00+03:00' },
+  },
+  {
+    name: 'ATM withdrawal code is ignored and never parsed',
+    ignored: 'atm_withdraw_code',
+    body: `Dear Customer,\nYour ATM withdraw secret code is 123456 with amount of ETB 500.00. Please use this code to withdraw money before 2026-10-13 12:00:00 at  Bank of Abyssinia ATM.\n\nFor additional information, please call 127 or visit www.ethiotelecom.et\nThank you for using telebirr\nEthio telecom`,
+  },
+  {
+    name: 'CBE debit where the charges are not itemised, only the total',
+    body: `Dear Kidus your Account 1*********1234 has been debited with ETB100.00 .Including Service charge and VAT(15%) with a total of ETB100.48. Your Current Balance is ETB 20.00. Thank you for Banking with CBE! https://shorturl.at/AB`,
+    expect: { kind: 'debit', amount: 10000, fee: 48, balanceAfter: 2000, needsReview: false },
+  },
+  {
+    name: 'CBE debit, charges not itemised, a total equal to the amount',
+    body: `Dear Kidus your Account 1*********1234 has been debited with ETB1,500.00 .Including Service charge and VAT(15%) with a total of ETB 1,500.00. Your Current Balance is ETB 2,000.00. Thank you for Banking with CBE! https://shorturl.at/AB`,
+    expect: { amount: 150000, fee: 0, balanceAfter: 200000, needsReview: false },
+  },
+  {
+    name: 'telebirr YeGena Chewata promotion',
+    ignored: 'promotion',
+    body: `Dear kaleab\nYou have got a letter as a gift from your friend/family. Login to telebirr SuperApp and visit YeGena Chewata page to get the letter. Make telebirr transactions to get more chances of winning up to 100,000 ETB in YeGena Chewata.\nThank you for using telebirr\nEthio telecom`,
+  },
+  {
+    name: 'telebirr prize message is kept but flagged for review',
+    body: `Dear kaleab,\nCongratulations, you have won ETB 100.00  as the Christmas gift!\nThank you for using telebirr.\nEthio telecom`,
+    expect: { kind: 'transfer_in', direction: 'in', amount: 10000, description: 'Christmas gift', needsReview: true, dateSource: 'received_at' },
+  },
+  {
+    name: 'telebirr bill payment',
+    body: `Dear kaleab\nYou have paid ETB 350.00 to pay bill for 123456789 on 12/10/2026 09:00:00. Your transaction number is CE123ULJ4X. Your telebirr account balance is  ETB 49.40. To download your payment information please click this link: https://transactioninfo.ethiotelecom.et/receipt/CE123ULJ4X\nThank you for using telebirr\nEthio telecom`,
+    expect: { kind: 'payment', direction: 'out', amount: 35000, balanceAfter: 4940, description: 'Bill payment', reference: 'CE123ULJ4X', counterparty: null },
+  },
+  {
+    name: 'CBE ATM withdrawal',
+    body: `Dear Kidus your Account 1********1234 has been debited for  ATM NO. 7 with ETB 1,000.00. Your Current Balance is ETB 2,500.00. Thank you for Banking with CBE! https://shorturl.at/AB Please give us your feedback by clicking the link below (ስላገኙት አገልግሎት የሚከተለውን ማስፈንጠሪያ በመጫን አስተያየቶን ይስጡን።)https://shorturl.at/XY`,
+    expect: { kind: 'debit', direction: 'out', amount: 100000, fee: 0, balanceAfter: 250000, description: 'ATM withdrawal', needsReview: false },
+  },
+  {
+    name: 'CBE debit with blank charge amounts is flagged for review',
+    body: `Dear Kidus your Account 1*********1234 has been debited with ETB500.00 .Service charge of   and VAT(15%) of . Your Current Balance is ETB 12,000.00. Thank you for Banking with CBE! https://shorturl.at/AB`,
+    expect: { kind: 'debit', amount: 50000, fee: 0, balanceAfter: 1200000, needsReview: true },
+  },
+  {
+    name: 'telebirr transfer to another bank (Awash), fee quoted including VAT',
+    body: `Dear kaleab\nYou have transferred ETB 800.00 successfully from your telebirr account 251911223344 to Awash International Bank S C account number 013201234567800 on 12/10/2026 14:00:00. Your telebirr transaction number is CAP1GQSMJR and your bank transaction number is 123456d78d9f0ciq. The service fee (Including 15% VAT) is ETB 2.00. Your current balance is ETB 60.00. To download your payment information please click this link: https://transactioninfo.ethiotelecom.et/receipt/CAP1GQSMJR\nThank you for using telebirr\nEthio telecom`,
+    expect: { kind: 'transfer_out', direction: 'out', amount: 80000, fee: 200, balanceAfter: 6000, counterparty: 'Awash International Bank S C', reference: 'CAP1GQSMJR', needsReview: false },
+  },
+  {
+    name: 'telebirr insufficient balance notice',
+    ignored: 'failed_transaction',
+    body: `Sorry, You have insufficient balance for the requested transaction. Your account balance is ETB 20.00. Please deposit additional amount and try again.\nThank you for using telebirr\nEthio telecom`,
+  },
+  {
+    name: 'CBE transfer message cut off after the recipient name is flagged for review',
+    body: `Dear Kidus, You have transfered ETB 150.00 to Esubalew`,
+    expect: { kind: 'transfer_out', direction: 'out', amount: 15000, fee: 0, counterparty: 'Esubalew', needsReview: true, dateSource: 'received_at', balanceAfter: null },
+  },
+
+  // ----- fifth batch: the very last ones -----
+  {
+    name: 'CBE debited FOR a named person, charges included in the total',
+    body: `Dear Mr Kidus your Account 1********1234 has been debited for MISS YANIT MESIFIN REGASSA with ETB 1500.0 including Service charge ETB0.50 and VAT(15%) ETB0.08. Your Current Balance is ETB 20000.00. Thank you for Banking with CBE!. For feedback https://shorturl.at/AB for Reciept https://apps.cbe.com.et:100/BranchReceipt/FT00000CCCC4&00001234`,
+    expect: { institution: 'CBE', kind: 'transfer_out', direction: 'out', amount: 149942, fee: 58, balanceAfter: 2000000, counterparty: 'MISS YANIT MESIFIN REGASSA', reference: 'FT00000CCCC4', needsReview: false },
+  },
+  {
+    name: 'telebirr loan levy (Disaster Risk Management fund)',
+    body: `Dear Kidus\nYou have paid ETB 5.00 for Ethiopian Disaster Risk Management fund (5% of your loan amount) .Your current telebirr balance is ETB 120.00.\nThank you for using telebirr\nEthio telecom`,
+    expect: { institution: 'TELEBIRR', kind: 'payment', direction: 'out', amount: 500, fee: 0, balanceAfter: 12000, description: 'Ethiopian Disaster Risk Management fund', dateSource: 'received_at' },
+  },
+  {
+    name: 'a loan levy of zero moves no money and is ignored',
+    ignored: 'zero_amount',
+    body: `Dear Kidus\nYou have paid ETB 0.00 for Ethiopian Disaster Risk Management fund (0% of your loan amount) .Your current telebirr balance is ETB 120.00.\nThank you for using telebirr\nEthio telecom`,
+  },
+  {
+    name: 'CBE old wording with charges listed but no total clause',
+    body: `Dear Kidus your Account 1*********1234 has been debited with ETB100.00 .Service charge of  ETB0.40 , VAT(15%) of ETB0.06 and (5%)Disaster fund of ETB0.02. Your Current Balance is ETB 20.00. Thank you for Banking with CBE! https://shorturl.at/AB`,
+    expect: { kind: 'debit', amount: 10000, fee: 48, balanceAfter: 2000, needsReview: false },
+  },
+  {
+    name: 'telebirr mela "due TODAY" reminder',
+    ignored: 'loan_reminder',
+    body: `Dear Kidus,\nYour outstanding telebirr mela for 30 day credit balance of ETB 120.00 is due TODAY. Your available limit is ETB 50.00.  Please deposit to your wallet account and Pay your credit to avoid the 0.5% daily penalty fee.\n\nThank you for using telebirr\nEthio telecom in partnership with Dashen Bank`,
+  },
 ];
 
 const at = (i: number) => new Date(Date.UTC(2026, 9, 2, 12, 0, i)); // distinct SMS time per message
@@ -284,7 +373,8 @@ for (const [i, f] of fixtures.entries()) {
     }
     assert.equal(r.status, 'parsed', `expected parsed, got ${r.status}`);
     if (r.status !== 'parsed') return;
-    assert.equal(r.tx.needsReview, false, 'arithmetic self-check failed');
+    // every message must pass the arithmetic self-check, unless the fixture says it is meant to be flagged
+    if (!('needsReview' in (f.expect ?? {}))) assert.equal(r.tx.needsReview, false, 'arithmetic self-check failed');
     for (const [k, v] of Object.entries(f.expect ?? {})) {
       assert.equal((r.tx as unknown as Record<string, unknown>)[k], v, `field ${k}`);
     }
@@ -294,7 +384,7 @@ for (const [i, f] of fixtures.entries()) {
 test('every real-shaped message is either parsed or deliberately ignored', () => {
   const results = fixtures.map((f, i) => parseSms({ body: f.body, receivedAt: at(i) }));
   assert.equal(results.filter((r) => r.status === 'unknown').length, 0);
-  assert.equal(results.filter((r) => r.status === 'parsed').length, fixtures.length - 8);
+  assert.equal(results.filter((r) => r.status === 'parsed').length, fixtures.length - 13);
 });
 
 test('dedupe keys are unique, including the two identical "debited 100.42" texts', () => {
