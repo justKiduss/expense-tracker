@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseSms, toMinor, type ParsedTransaction } from './parser.ts';
+import { parseSms, toMinor, type ParsedTransaction } from './parser';
 
 // Fixtures keep the exact wording, spacing, typos and number formats of real messages.
 // Names, phone numbers, account digits and transaction ids are replaced with fake ones
