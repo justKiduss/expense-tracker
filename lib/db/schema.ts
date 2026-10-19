@@ -76,3 +76,14 @@ export const pairingCodes = pgTable('pairing_codes', {
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
   usedAt: timestamp('used_at', { withTimezone: true }),
 });
+
+
+
+export const categoryRules = pgTable('category_rules', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  matchType: text('match_type').notNull(),
+  matchValue: text('match_value').notNull(),
+  categoryId: uuid('category_id').notNull().references(() => categories.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [uniqueIndex('category_rules_user_match_uq').on(t.userId, t.matchType, t.matchValue)]);

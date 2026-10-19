@@ -1,8 +1,13 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getRequestUser } from '@/lib/auth/request-user';
-import { importParsedTransation } from '@/lib/services/transaction.service';
+import { importBatch } from '@/lib/services/transaction.service';
 import { matchInternalTransfers } from '@/lib/services/transfer.service';
+import { applyCategoryRules } from '@/lib/services/category-rules.service';
+
+// A batch is one database statement now, but allow room for a slow connection (up to what your plan permits).
+export const maxDuration = 60;
+
 const money = z.number().int().min(0).max(100_000_000_000);
 
 const item = z.object({
@@ -31,16 +36,23 @@ export async function POST(request: Request) {
   const parsed = schema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
 
-  const results: { dedupeKey: string; status: 'created' | 'duplicate' }[] = [];
-  for (const tx of parsed.data.transactions) {
-    const saved = await importParsedTransation(user.id, tx);
-    results.push({ dedupeKey: tx.dedupeKey, status: saved ? 'created' : 'duplicate' });
+  // One statement for the whole batch. Rows that already exist are skipped by the unique index.
+  const txs = parsed.data.transactions;
+  const createdKeys = await importBatch(user.id, txs);
+  const results = txs.map((tx) => ({
+    dedupeKey: tx.dedupeKey,
+    // delete() returns true only once per key, so two identical keys in one batch count as one created, one duplicate
+    status: createdKeys.delete(tx.dedupeKey) ? 'created' : 'duplicate',
+  }));
+
+  // Pair up moves between your own CBE and telebirr accounts, then apply your saved category rules.
+  // A failure here must never break an import.
+  try {
+    await matchInternalTransfers(user.id);
+    await applyCategoryRules(user.id); // after matching, so own transfers (internal) are skipped
+  } catch (e) {
+    console.error('transfer matching or category rules failed', e);
   }
-  try { 
-    await matchInternalTransfers(user.id); 
-  } 
-  catch (e) {
-     console.error('transfer matching failed', e); 
-  }
+
   return NextResponse.json({ results });
 }

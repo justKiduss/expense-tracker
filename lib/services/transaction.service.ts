@@ -122,3 +122,28 @@ export function currentMonthRange(now = new Date()) {
     daysLeft: Math.max(1, Math.ceil((to.getTime() - now.getTime()) / 86_400_000)),
   };
 }
+
+export async function importBatch(userId: string, txs: ParsedTransaction[]) {
+  const rows = await db
+    .insert(transations)
+    .values(txs.map((tx) => ({
+      userId,
+      institution: tx.institution,
+      direction: tx.direction,
+      kind: tx.kind,
+      amount: tx.amount,
+      fee: tx.fee,
+      currency: tx.currency,
+      balanceAfter: tx.balanceAfter,
+      counterparty: tx.counterparty,
+      description: tx.description,
+      reference: tx.reference,
+      dedupeKey: tx.dedupeKey,
+      occurredAt: new Date(tx.occurredAt),
+      source: 'sms',
+      needsReview: tx.needsReview,
+    })))
+    .onConflictDoNothing({ target: [transations.userId, transations.dedupeKey] })
+    .returning({ dedupeKey: transations.dedupeKey });
+  return new Set(rows.map((r) => r.dedupeKey));
+}
