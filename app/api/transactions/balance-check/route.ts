@@ -38,7 +38,7 @@ export async function GET() {
     consistent: report.consistent,
     skipped: report.skipped,
     percentConsistent: report.checked ? Math.round((report.consistent / report.checked) * 1000) / 10 : null,
-    firstBreaks: report.breaks.slice(0, 40).map((b) => ({
+    firstBreaks: report.breaks.slice(-40).reverse().map((b) => ({
       institution: b.institution,
       at: b.at.toISOString(),
       expectedBalance: birr(b.expected),
