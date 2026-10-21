@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  ArrowLeftRight, ChartNoAxesCombined, ChevronDown, CreditCard, House, Settings, Tag, Target, Trophy, Wallet,
+  ArrowLeftRight, ChartNoAxesCombined, ChevronDown, CreditCard, House, Settings, Tag, Target, ShieldCheck, Wallet,
 } from 'lucide-react';
 
 const navigation = [
@@ -11,7 +11,6 @@ const navigation = [
   { label: 'Transactions', href: '/transactions', Icon: ArrowLeftRight },
   { label: 'Budgets', href: '/budgets', Icon: Target },
   { label: 'Reports', href: '/reports', Icon: ChartNoAxesCombined },
-  { label: 'Goals', href: '/goals', Icon: Trophy },
 ];
 
 const settings = [
@@ -69,12 +68,9 @@ export default function AppSidebar({ userName, userEmail, activeHref }: AppSideb
 
       {/* pinned to the bottom */}
       <div className="mt-auto space-y-4">
-        <div className="rounded-xl border border-line bg-panel p-4">
-          <span className="mb-3 flex size-8 items-center justify-center rounded-full bg-brand/15 text-brand">
-            <Target size={16} aria-hidden="true" />
-          </span>
-          <p className="text-sm font-semibold leading-snug text-white">Better money habits. A brighter future.</p>
-          <p className="mt-3 text-xs text-brand">Track · Plan · Grow</p>
+        <div className="mx-3 mb-3 flex items-start gap-2 px-3 py-2 text-xs text-neutral-400">
+          <ShieldCheck className="size-4 shrink-0 text-emerald-400" aria-hidden="true" />
+          <p>Your messages stay on your phone.</p>
         </div>
 
         <div className="flex items-center gap-3 border-t border-line pt-4">
