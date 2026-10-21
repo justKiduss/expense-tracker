@@ -28,7 +28,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
       <div className="flex min-w-0 flex-1 flex-col">
         <OverviewHeader userName={userName} month={data.month} />
         <main className="flex-1 space-y-6 p-6">
-          <AttentionStrip {...data.attention} reviewHref='/app/review'/>
+          <AttentionStrip {...data.attention} reviewHref='/review'/>
           <OverviewCards items={data.overview} />
 
           <div className="grid gap-6 lg:grid-cols-5">
