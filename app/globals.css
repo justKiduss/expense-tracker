@@ -5,13 +5,12 @@
   --foreground: #171717;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+@theme {
+  --color-app: #050d0d;     /* page background */
+  --color-panel: #0a1514;   /* cards and panels */
+  --color-line: #15302c;    /* borders */
+  --color-brand: #1fbf75;   /* the green accent */
 }
-
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
