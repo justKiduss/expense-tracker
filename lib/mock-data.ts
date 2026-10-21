@@ -5,13 +5,7 @@ import type { CategorySlice } from '@/components/dashboard/category-breakdown';
 import type { BillItem } from '@/components/dashboard/upcoming-bills';
 import type { BudgetItem } from '@/components/dashboard/budget-progress';
 import type { GoalItem } from '@/components/dashboard/goals';
-
-export const mockOverview: OverviewItem[] = [
-  { id: 'balance',  valueCents: 425000, changePercent: 8.2,  trend: [20, 24, 22, 28, 26, 32, 30, 36, 40] },
-  { id: 'expenses', valueCents: 128000, changePercent: -12.5, trend: [30, 26, 34, 28, 32, 24, 26, 20, 22] },
-  { id: 'income',   valueCents: 280000, changePercent: 5.1,  trend: [10, 14, 12, 18, 16, 20, 22, 21, 26] },
-  { id: 'net',      valueCents: 152000, changePercent: 18.3, trend: [8, 10, 9, 14, 13, 17, 16, 20, 24] },
-];
+import type { AccountItem } from '@/components/dashboard/accounts-card';
 
 export const mockRecent: RecentTx[] = [
   { id: '1', occurredAt: '2026-10-20T09:15:00+03:00', description: 'Shoa Supermarket', categoryName: 'Food', direction: 'out', amountCents: 185000 },
@@ -58,13 +52,7 @@ export const mockBills: BillItem[] = [
   { id: 'b3', name: 'Rent', dueInDays: 12, amountCents: 300000, icon: 'rent' },
 ];
 
-export const mockBudgets: BudgetItem[] = [
-  { id: 'c1', name: 'Food', spentCents: 32000, budgetCents: 50000 },
-  { id: 'c2', name: 'Transport', spentCents: 12000, budgetCents: 30000 },
-  { id: 'c3', name: 'Shopping', spentCents: 18000, budgetCents: 40000 },
-  { id: 'c4', name: 'Entertainment', spentCents: 6000, budgetCents: 20000 },
-  { id: 'c5', name: 'Health', spentCents: 8000, budgetCents: 20000 },
-];
+
 
 export const mockGoals: GoalItem[] = [
   { id: 'g1', name: 'Emergency Fund', savedCents: 152000, targetCents: 300000, icon: 'shield' },
@@ -75,4 +63,26 @@ export const mockAttention = {
   needsCategoryCount: 7,
   lastSyncedAt: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
   newMessagesToday: 12,
+};
+
+export const mockOverview: OverviewItem[] = [
+  { id: 'expenses', valueCents: 128000, changePercent: -12.5 },
+  { id: 'income', valueCents: 280000, changePercent: 5.1 },
+  { id: 'net', valueCents: 152000, changePercent: null, note: 'Income minus spent' },
+  { id: 'fees', valueCents: 8550, changePercent: null, note: 'Already inside spent' },
+];
+
+export const mockBudgets: BudgetItem[] = [
+  { id: 'c1', name: 'Food', spentCents: 32000, budgetCents: 50000 },
+  { id: 'c2', name: 'Transport', spentCents: 12000, budgetCents: 30000 },
+  { id: 'c3', name: 'Entertainment', spentCents: 17000, budgetCents: 20000 },
+  { id: 'c4', name: 'Airtime & Data', spentCents: 6000, budgetCents: 15000 },
+];
+
+export const mockAccounts: { accounts: AccountItem[]; internalTransfersExcluded: number } = {
+  accounts: [
+    { id: 'cbe', name: 'CBE', kind: 'bank', balanceCents: 342050 },
+    { id: 'telebirr', name: 'telebirr', kind: 'wallet', balanceCents: 82950 },
+  ],
+  internalTransfersExcluded: 2,
 };

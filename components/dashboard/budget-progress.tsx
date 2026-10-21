@@ -1,4 +1,4 @@
-import { Car, Gamepad2, HeartPulse, ShoppingBag, ShoppingCart, Tag } from 'lucide-react';
+import { Car, Gamepad2, HeartPulse, ShoppingBag, ShoppingCart, Tag,Smartphone } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { CardHeader } from '@/components/ui/card-header';
 import { cn } from '@/lib/utilis';
@@ -11,6 +11,7 @@ const ICONS: Record<string, { Icon: typeof Tag; badge: string }> = {
   Shopping: { Icon: ShoppingBag, badge: 'bg-rose-500/15 text-rose-400' },
   Entertainment: { Icon: Gamepad2, badge: 'bg-orange-500/15 text-orange-400' },
   Health: { Icon: HeartPulse, badge: 'bg-blue-500/15 text-blue-400' },
+    'Airtime & Data': { Icon: Smartphone, badge: 'bg-violet-500/15 text-violet-400' },
 };
 const FALLBACK = { Icon: Tag, badge: 'bg-neutral-500/15 text-neutral-300' };
 
@@ -23,7 +24,7 @@ export interface BudgetItem {
 
 export default function BudgetProgress({ items, viewAllHref = '/budgets' }: { items: BudgetItem[]; viewAllHref?: string }) {
   return (
-    <Card>
+    <Card className='h-full'>
       <CardHeader title="Monthly Budget Progress" href={viewAllHref} />
       {items.length === 0 ? (
         <p className="mt-4 text-sm text-neutral-500">No category budgets set yet.</p>

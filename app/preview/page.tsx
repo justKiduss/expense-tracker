@@ -8,9 +8,9 @@ import OverviewCards from '@/components/dashboard/overview-cards';
 import SpendingOverview from '@/components/dashboard/spending-overview';
 import CategoryBreakdown from '@/components/dashboard/category-breakdown';
 import RecentTransactions from '@/components/dashboard/recent-transactions';
-import UpcomingBills from '@/components/dashboard/upcoming-bills';
 import BudgetProgress from '@/components/dashboard/budget-progress';
-import Goals from '@/components/dashboard/goals';
+import AccountsCard from '@/components/dashboard/accounts-card';
+
 import {
   mockAttention,
   mockOverview,
@@ -18,9 +18,8 @@ import {
   mockWeek,
   mockMonth,
   mockCategories,
-  mockBills,
   mockBudgets,
-  mockGoals,
+  mockAccounts
 } from '@/lib/mock-data';
 
 export default function PreviewPage() {
@@ -38,28 +37,30 @@ export default function PreviewPage() {
           onAddTransaction={() => console.log('add transaction')}
           onSearchClick={() => console.log('search')}
         />
-        <main className="flex-1 p-6">
-          <div className="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_340px]">
-            <div className="min-w-0 space-y-6">
-              <AttentionStrip {...mockAttention} />
-              <OverviewCards items={mockOverview} />
-              <div className="grid gap-6 lg:grid-cols-5">
-                <div className="lg:col-span-3">
-                  <SpendingOverview week={mockWeek} month={mockMonth} />
-                </div>
-                <div className="lg:col-span-2">
-                  <CategoryBreakdown items={mockCategories} />
-                </div>
-              </div>
-              <RecentTransactions items={mockRecent} />
-            </div>
 
-            <aside className="space-y-6">
-              <UpcomingBills items={mockBills} />
+        <main className="flex-1 space-y-6 p-6">
+          <AttentionStrip {...mockAttention} />
+          <OverviewCards items={mockOverview} />
+
+          <div className="grid gap-6 lg:grid-cols-5">
+            <div className="lg:col-span-3">
               <BudgetProgress items={mockBudgets} />
-              <Goals items={mockGoals} />
-            </aside>
+            </div>
+            <div className="lg:col-span-2">
+              <AccountsCard {...mockAccounts} />
+            </div>
           </div>
+
+          <div className="grid gap-6 lg:grid-cols-5">
+            <div className="lg:col-span-3">
+              <SpendingOverview week={mockWeek} month={mockMonth} />
+            </div>
+            <div className="lg:col-span-2">
+              <CategoryBreakdown items={mockCategories} />
+            </div>
+          </div>
+
+          <RecentTransactions items={mockRecent} />
         </main>
       </div>
     </div>
