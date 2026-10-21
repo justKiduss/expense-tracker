@@ -1,20 +1,29 @@
 'use client';
 
 import { useState } from 'react';
-import AppHeader from '@/components/layout/app-header';
 import AppSidebar from '@/components/layout/app-sidebar';
+import PageHeader from '@/components/layout/page-header';
+import AttentionStrip from '@/components/dashboard/attention-strip';
 import OverviewCards from '@/components/dashboard/overview-cards';
-import RecentTransactions from '@/components/dashboard/recent-transactions';
 import SpendingOverview from '@/components/dashboard/spending-overview';
 import CategoryBreakdown from '@/components/dashboard/category-breakdown';
+import RecentTransactions from '@/components/dashboard/recent-transactions';
 import UpcomingBills from '@/components/dashboard/upcoming-bills';
 import BudgetProgress from '@/components/dashboard/budget-progress';
 import Goals from '@/components/dashboard/goals';
-import { mockOverview, mockRecent, mockWeek, mockMonth, mockCategories, mockBills, mockBudgets, mockGoals,mockAttention } from '@/lib/mock-data';
-import AttentionStrip from '@/components/dashboard/attention-strip';
+import {
+  mockAttention,
+  mockOverview,
+  mockRecent,
+  mockWeek,
+  mockMonth,
+  mockCategories,
+  mockBills,
+  mockBudgets,
+  mockGoals,
+} from '@/lib/mock-data';
 
 export default function PreviewPage() {
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [month, setMonth] = useState('2026-10');
 
   return (
@@ -22,14 +31,12 @@ export default function PreviewPage() {
       <AppSidebar activeHref="/dashboard" userName="Kidus" userEmail="kidus@example.com" />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <AppHeader
+        <PageHeader
           userName="Kidus"
-          theme={theme}
-          onToggleTheme={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}
           month={month}
           onMonthChange={setMonth}
-          onSearch={(q) => console.log('search for:', q)}
-          hasUnread
+          onAddTransaction={() => console.log('add transaction')}
+          onSearchClick={() => console.log('search')}
         />
         <main className="flex-1 p-6">
           <div className="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_340px]">

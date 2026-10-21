@@ -24,3 +24,13 @@ export function timeAgo(iso: string): string {
 export function isOlderThanHours(iso: string, hours: number): boolean {
   return Date.now() - new Date(iso).getTime() > hours * 60 * 60 * 1000;
 }
+
+/** "Good morning" / "Good afternoon" / "Good evening" in Addis Ababa time */
+export function greeting(): string {
+  const hour = Number(
+    new Intl.DateTimeFormat('en-US', { hour: 'numeric', hourCycle: 'h23', timeZone: 'Africa/Addis_Ababa' }).format(new Date()),
+  );
+  if (hour < 12) return 'Good morning';
+  if (hour < 18) return 'Good afternoon';
+  return 'Good evening';
+}
