@@ -83,7 +83,7 @@ export async function updateTransactionMeta(
 
 // One definition of "spent", used by both the summary and the breakdown so they always add up:
 // principal of outgoing, non-internal, non-loan-repayment rows, plus every fee.
-const spentSql = sql<number>`coalesce(sum(case when ${transations.direction} = 'out' and not ${transations.isInternal} and ${transations.kind} <> 'loan_repayment' then ${transations.amount} else 0 end), 0) + coalesce(sum(${transations.fee}), 0)`.mapWith(Number);
+export const spentSql = sql<number>`coalesce(sum(case when ${transations.direction} = 'out' and not ${transations.isInternal} and ${transations.kind} <> 'loan_repayment' then ${transations.amount} else 0 end), 0) + coalesce(sum(${transations.fee}), 0)`.mapWith(Number);
 
 export async function getSummary(userId: string, from: Date, to: Date) {
   const [row] = await db

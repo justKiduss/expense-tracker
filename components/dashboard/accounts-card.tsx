@@ -8,6 +8,7 @@ export interface AccountItem {
   name: string; // 'CBE', 'telebirr'
   kind: 'bank' | 'wallet';
   balanceCents: number | null; // null = no balance seen yet
+  asOf?:string;
 }
 
 export default function AccountsCard({
@@ -34,7 +35,19 @@ export default function AccountsCard({
               <li key={a.id} className="flex items-center justify-between gap-3 py-3 first:pt-0">
                 <span className="flex items-center gap-3 text-sm text-neutral-100">
                   <Icon className="size-5 text-neutral-400" aria-hidden="true" />
-                  {a.name}
+                  <span>
+                    {a.name}
+                    {a.asOf && (
+                      <span className="block text-xs text-neutral-500">
+                        as of{' '}
+                        {new Date(a.asOf).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          timeZone: 'Africa/Addis_Ababa',
+                        })}
+                      </span>
+                    )}
+                  </span>
                 </span>
                 {a.balanceCents === null ? (
                   <span className="text-xs text-neutral-500">No balance yet</span>
@@ -49,7 +62,7 @@ export default function AccountsCard({
 
       {known.length > 0 && (
         <div className="flex items-center justify-between border-t border-line pt-3">
-          <span className="text-sm text-neutral-400">Total</span>
+          <span className="text-sm text-neutral-400">Total (latest known)</span>
           <span className="text-base font-semibold text-white">ETB {formatCurrency(total)}</span>
         </div>
       )}

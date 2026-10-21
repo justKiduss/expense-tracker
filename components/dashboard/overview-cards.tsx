@@ -16,6 +16,7 @@ export interface OverviewItem {
   valueCents: number;
   changePercent: number | null; // vs last month; null = nothing to compare with
   note?: string; // shown instead of the change line
+  compareLabel?: string; // 'same days last month' or 'previous month'
 }
 
 function Note({ item }: { item: OverviewItem }) {
@@ -25,8 +26,8 @@ function Note({ item }: { item: OverviewItem }) {
   const up = item.changePercent >= 0;
   const good = up === (CONFIG[item.id].goodWhen === 'up'); // for spending, going DOWN is the good news
   return (
-    <p className={cn('mt-2 text-xs', good ? 'text-emerald-400' : 'text-rose-400')}>
-      {Math.abs(item.changePercent).toFixed(1)}% {up ? 'more' : 'less'} than last month
+        <p className={cn('mt-2 text-xs', good ? 'text-emerald-400' : 'text-rose-400')}>
+      {Math.abs(item.changePercent).toFixed(1)}% {up ? 'more' : 'less'} than {item.compareLabel ?? 'last month'}
     </p>
   );
 }

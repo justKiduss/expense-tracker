@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 
 const navigation = [
-  { label: 'Dashboard', href: '/dashboard', Icon: House },
+  { label: 'Dashboard', href: '/overview', Icon: House },
   { label: 'Transactions', href: '/transactions', Icon: ArrowLeftRight },
   { label: 'Budgets', href: '/budgets', Icon: Target },
   { label: 'Reports', href: '/reports', Icon: ChartNoAxesCombined },
