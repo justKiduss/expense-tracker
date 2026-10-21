@@ -1,27 +1,36 @@
-import { and, desc, eq, gte, isNull, lt, ne, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, isNull, lt, ne } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import { transations } from '@/lib/db/schema';
 import { formatCurrency } from '@/lib/format-currency';
+import { KIND_LABEL } from '@/lib/services/spending-detail.service';
 
 const ADDIS_OFFSET_MS = 3 * 60 * 60 * 1000; // UTC+3
 const DAY_MS = 86_400_000;
+
+export type ReviewPayment = {
+  id: string;
+  occurredAt: string; // ISO
+  totalCents: number;
+  note: string | null;
+};
 
 export type ReviewGroup = {
   key: string;
   sampleId: string;
   label: string;
-  hint: string | null;
+  kindLabel: string;
   remember: 'counterparty' | 'amount';
   count: number;
   totalCents: number;
   lastAt: string; // ISO
+  payments: ReviewPayment[]; // newest first, max 30
 };
 
 export type ReviewRange = {
   from: Date | null;
   to: Date | null;
-  month: string | null; // 'YYYY-MM' or null
-  day: string | null; // 'YYYY-MM-DD' or null
+  month: string | null;
+  day: string | null;
   all: boolean;
 };
 
@@ -54,9 +63,6 @@ export function resolveReviewRange(month?: string, day?: string): ReviewRange {
 
 /** Uncategorised spending in the range, grouped by person paid, or by amount when there is no name. */
 export async function getReviewGroups(userId: string, range: ReviewRange, limit = 40): Promise<ReviewGroup[]> {
-  const amountKey = sql<number | null>`case when ${transations.counterparty} is null then ${transations.amount} end`;
-  const totalSql = sql`sum(${transations.amount} + coalesce(${transations.fee}, 0))`;
-
   const conditions = [
     eq(transations.userId, userId),
     isNull(transations.categoryId),
@@ -69,31 +75,53 @@ export async function getReviewGroups(userId: string, range: ReviewRange, limit 
 
   const rows = await db
     .select({
+      id: transations.id,
       counterparty: transations.counterparty,
-      amountKey,
-      sampleId: sql<string>`(array_agg(${transations.id} order by ${transations.occurredAt} desc))[1]`,
-      hint: sql<string | null>`max(${transations.description})`,
-      count: sql<number>`count(*)`.mapWith(Number),
-      total: sql<number>`sum(${transations.amount} + coalesce(${transations.fee}, 0))`.mapWith(Number),
-      lastAt: sql<Date | string>`max(${transations.occurredAt})`,
+      description: transations.description,
+      kind: transations.kind,
+      amount: transations.amount,
+      fee: transations.fee,
+      occurredAt: transations.occurredAt,
     })
     .from(transations)
     .where(and(...conditions))
-    .groupBy(transations.counterparty, amountKey)
-    .orderBy(desc(totalSql))
-    .limit(limit);
+    .orderBy(desc(transations.occurredAt)) // newest first, so the first row of a group is its latest
+    .limit(3000);
 
-  return rows.map((r) => {
+  const groups = new Map<string, ReviewGroup>();
+  for (const r of rows) {
     const byName = r.counterparty !== null;
-    return {
-      key: byName ? `c:${r.counterparty}` : `a:${r.amountKey}`,
-      sampleId: r.sampleId,
-      label: byName ? (r.counterparty as string) : `Payments of ${formatCurrency(r.amountKey ?? 0)}`,
-      hint: byName ? r.hint : null,
-      remember: byName ? 'counterparty' : 'amount',
-      count: r.count,
-      totalCents: r.total,
-      lastAt: new Date(r.lastAt).toISOString(),
-    } satisfies ReviewGroup;
-  });
+    const key = byName ? `c:${r.counterparty}` : `a:${r.amount}`;
+    const total = r.amount + (r.fee ?? 0);
+    const payment: ReviewPayment = {
+      id: r.id,
+      occurredAt: r.occurredAt.toISOString(),
+      totalCents: total,
+      note: r.description,
+    };
+
+    const existing = groups.get(key);
+    if (existing) {
+      existing.count += 1;
+      existing.totalCents += total;
+      existing.payments.push(payment);
+    } else {
+      groups.set(key, {
+        key,
+        sampleId: r.id,
+        label: byName ? (r.counterparty as string) : `Payments of ${formatCurrency(r.amount)}`,
+        kindLabel: KIND_LABEL[r.kind] ?? r.kind,
+        remember: byName ? 'counterparty' : 'amount',
+        count: 1,
+        totalCents: total,
+        lastAt: payment.occurredAt,
+        payments: [payment],
+      });
+    }
+  }
+
+  return [...groups.values()]
+    .sort((a, b) => b.totalCents - a.totalCents)
+    .slice(0, limit)
+    .map((g) => ({ ...g, payments: g.payments.slice(0, 30) }));
 }
