@@ -1,4 +1,5 @@
-import { Car, Gamepad2, HeartPulse, ShoppingBag, ShoppingCart, Tag,Smartphone } from 'lucide-react';
+import Link from 'next/link';
+import { Car, Gamepad2, HeartPulse, ShoppingBag, ShoppingCart, Tag, Smartphone } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { CardHeader } from '@/components/ui/card-header';
 import { cn } from '@/lib/utilis';
@@ -11,7 +12,7 @@ const ICONS: Record<string, { Icon: typeof Tag; badge: string }> = {
   Shopping: { Icon: ShoppingBag, badge: 'bg-rose-500/15 text-rose-400' },
   Entertainment: { Icon: Gamepad2, badge: 'bg-orange-500/15 text-orange-400' },
   Health: { Icon: HeartPulse, badge: 'bg-blue-500/15 text-blue-400' },
-    'Airtime & Data': { Icon: Smartphone, badge: 'bg-violet-500/15 text-violet-400' },
+  'Airtime & Data': { Icon: Smartphone, badge: 'bg-violet-500/15 text-violet-400' },
 };
 const FALLBACK = { Icon: Tag, badge: 'bg-neutral-500/15 text-neutral-300' };
 
@@ -22,44 +23,58 @@ export interface BudgetItem {
   budgetCents: number;
 }
 
-export default function BudgetProgress({ items, viewAllHref = '/budgets' }: { items: BudgetItem[]; viewAllHref?: string }) {
+export default function BudgetProgress({
+  items,
+  month,
+  viewAllHref = '/budgets',
+}: {
+  items: BudgetItem[];
+  month?: string; // 'YYYY-MM', so the link opens the same month
+  viewAllHref?: string;
+}) {
   return (
-    <Card className='h-full'>
+    <Card className="h-full">
       <CardHeader title="Monthly Budget Progress" href={viewAllHref} />
       {items.length === 0 ? (
         <p className="mt-4 text-sm text-neutral-500">No category budgets set yet.</p>
       ) : (
-        <ul className="mt-4 space-y-4">
+        <ul className="mt-4 space-y-2">
           {items.map((b) => {
             const { Icon, badge } = ICONS[b.name] ?? FALLBACK;
             const pct = b.budgetCents > 0 ? Math.round((b.spentCents / b.budgetCents) * 100) : 0;
             const bar = pct >= 100 ? 'bg-rose-500' : pct >= 80 ? 'bg-amber-400' : 'bg-emerald-500';
+            const href = `/transactions?${month ? `month=${month}&` : ''}category=${b.id}`;
             return (
-              <li key={b.id} className="flex items-center gap-3">
-                <span className={cn('flex size-9 shrink-0 items-center justify-center rounded-lg', badge)}>
-                  <Icon className="size-4" aria-hidden="true" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-baseline justify-between gap-2 text-sm">
-                    <span className="truncate text-neutral-100">{b.name}</span>
-                    <span className="shrink-0 text-xs text-neutral-400">
-                      ETB {formatBirrShort(b.spentCents)} / {formatBirrShort(b.budgetCents)}
-                    </span>
-                  </div>
-                  <div className="mt-1.5 flex items-center gap-3">
-                    <div
-                      className="h-1.5 flex-1 overflow-hidden rounded-full bg-neutral-800"
-                      role="progressbar"
-                      aria-valuenow={Math.min(pct, 100)}
-                      aria-valuemin={0}
-                      aria-valuemax={100}
-                      aria-label={`${b.name} budget used`}
-                    >
-                      <div className={cn('h-full rounded-full', bar)} style={{ width: `${Math.min(pct, 100)}%` }} />
+              <li key={b.id}>
+                <Link
+                  href={href}
+                  className="flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-neutral-800/40"
+                >
+                  <span className={cn('flex size-9 shrink-0 items-center justify-center rounded-lg', badge)}>
+                    <Icon className="size-4" aria-hidden="true" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline justify-between gap-2 text-sm">
+                      <span className="truncate text-neutral-100">{b.name}</span>
+                      <span className="shrink-0 text-xs text-neutral-400">
+                        ETB {formatBirrShort(b.spentCents)} / {formatBirrShort(b.budgetCents)}
+                      </span>
                     </div>
-                    <span className="w-9 text-right text-xs text-neutral-400">{pct}%</span>
+                    <div className="mt-1.5 flex items-center gap-3">
+                      <div
+                        className="h-1.5 flex-1 overflow-hidden rounded-full bg-neutral-800"
+                        role="progressbar"
+                        aria-valuenow={Math.min(pct, 100)}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-label={`${b.name} budget used`}
+                      >
+                        <div className={cn('h-full rounded-full', bar)} style={{ width: `${Math.min(pct, 100)}%` }} />
+                      </div>
+                      <span className="w-9 text-right text-xs text-neutral-400">{pct}%</span>
+                    </div>
                   </div>
-                </div>
+                </Link>
               </li>
             );
           })}

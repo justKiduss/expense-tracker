@@ -33,7 +33,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
 
           <div className="grid gap-6 lg:grid-cols-5">
             <div className="lg:col-span-3">
-              <BudgetProgress items={data.budgets} />
+              <BudgetProgress items={data.budgets} month={data.month}/>
             </div>
             <div className="lg:col-span-2">
               <AccountsCard {...data.accounts} />
