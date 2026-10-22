@@ -47,7 +47,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
               <SpendingOverview week={data.week} month={data.month30} />
             </div>
             <div className="lg:col-span-2">
-              <CategoryBreakdown items={data.categories} />
+              <CategoryBreakdown items={data.categories} month={data.month} />
             </div>
           </div>
 

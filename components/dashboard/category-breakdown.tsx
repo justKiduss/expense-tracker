@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { Card } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/format-currency';
 
@@ -22,10 +23,15 @@ const PALETTE = [
 const R = 15.9155; // circle whose length is exactly 100, so a slice's percent = its dash length
 const GAP = 0.6; // small gap between slices
 
-export default function CategoryBreakdown({ items }: { items: CategorySlice[] }) {
+function percentLabel(pct: number) {
+  if (pct > 0 && pct < 1) return '<1%';
+  return `${Math.round(pct)}%`;
+}
+
+export default function CategoryBreakdown({ items, month }: { items: CategorySlice[]; month?: string }) {
   const total = items.reduce((sum, i) => sum + i.amountCents, 0);
 
-   const pctOf = (amount: number) => (total > 0 ? (amount / total) * 100 : 0);
+  const pctOf = (amount: number) => (total > 0 ? (amount / total) * 100 : 0);
 
   const slices = items.map((item, i) => ({
     ...item,
@@ -33,6 +39,8 @@ export default function CategoryBreakdown({ items }: { items: CategorySlice[] })
     offset: items.slice(0, i).reduce((sum, prev) => sum + pctOf(prev.amountCents), 0),
     color: PALETTE[i % PALETTE.length],
   }));
+
+  const hrefFor = (id: string) => `/transactions?${month ? `month=${month}&` : ''}category=${id}`;
 
   return (
     <Card className="h-full">
@@ -70,12 +78,20 @@ export default function CategoryBreakdown({ items }: { items: CategorySlice[] })
             </div>
           </div>
 
-          <ul className="min-w-[140px] flex-1 space-y-2 text-sm">
+          <ul className="min-w-[140px] flex-1 space-y-1 text-sm">
             {slices.map((s) => (
-              <li key={s.id} className="flex items-center gap-2">
-                <span className={`size-2.5 rounded-full ${s.color.dot}`} aria-hidden="true" />
-                <span className="flex-1 text-neutral-300">{s.name}</span>
-                <span className="text-neutral-400">{Math.round(s.pct)}%</span>
+              <li key={s.id}>
+                <Link
+                  href={hrefFor(s.id)}
+                  className="flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-neutral-800/40"
+                >
+                  <span className={`size-2.5 shrink-0 rounded-full ${s.color.dot}`} aria-hidden="true" />
+                  <span className="min-w-0 flex-1 truncate text-neutral-300">{s.name}</span>
+                  <span className="shrink-0 text-right">
+                    <span className="block text-neutral-100">{formatCurrency(s.amountCents)}</span>
+                    <span className="block text-xs text-neutral-500">{percentLabel(s.pct)}</span>
+                  </span>
+                </Link>
               </li>
             ))}
           </ul>
