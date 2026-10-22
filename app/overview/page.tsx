@@ -10,6 +10,8 @@ import CategoryBreakdown from '@/components/dashboard/category-breakdown';
 import RecentTransactions from '@/components/dashboard/recent-transactions';
 import { getDashboardData } from '@/lib/services/dashboard.service';
 import { getCurrentUser } from '@/lib/auth/session';
+import LimitCard from '@/components/dashboard/limit-card';
+
 export default async function OverviewPage({ searchParams }: { searchParams: Promise<{ month?: string }> }) {
   const { month } = await searchParams;
 
@@ -30,7 +32,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
         <main className="flex-1 space-y-6 p-6">
           <AttentionStrip {...data.attention} reviewHref='/review'/>
           <OverviewCards items={data.overview} />
-
+          <LimitCard {...data.limit} />
           <div className="grid gap-6 lg:grid-cols-5">
             <div className="lg:col-span-3">
               <BudgetProgress items={data.budgets} month={data.month}/>

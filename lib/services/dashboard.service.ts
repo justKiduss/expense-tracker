@@ -10,6 +10,7 @@ import type { CategorySlice } from '@/components/dashboard/category-breakdown';
 import type { BarPoint } from '@/components/dashboard/spending-overview';
 import type { RecentTx } from '@/components/dashboard/recent-transactions';
 import type { AccountItem } from '@/components/dashboard/accounts-card';
+import { getMonthlyLimit } from '@/lib/services/user.service';
 
 const ADDIS_OFFSET_MS = 3 * 60 * 60 * 1000; // UTC+3, no daylight saving
 const DAY_MS = 86_400_000;
@@ -183,27 +184,39 @@ async function getDailySeries(userId: string, days: number, now: Date): Promise<
 export async function getDashboardData(userId: string, monthParam?: string) {
   const now = new Date();
   const { key, from, to, prevFrom, isCurrent } = resolveMonth(monthParam, now);
-
+  
   // Fair comparison: this month so far against the same number of days last month.
   const elapsed = isCurrent ? now.getTime() - from.getTime() : Infinity;
   const prevTo = new Date(Math.min(prevFrom.getTime() + elapsed, from.getTime()));
   const compareLabel = isCurrent ? 'same days last month' : 'the month before';
 
-  const [cur, prev, fees, needsCategoryCount, internalTransfers, sync, accounts, daily, categoriesList, breakdown, recentRows] =
-    await Promise.all([
-      getSummary(userId, from, to),
-      getSummary(userId, prevFrom, prevTo),
-      getFees(userId, from, to),
-      countNeedsCategory(userId, from, to),
-      countInternalTransfers(userId, from, to),
-      getSyncStatus(userId, now),
-      getAccounts(userId),
-      getDailySeries(userId, 30, now),
-      listCategories(userId),
-      getCategoryBreakdown(userId, from, to),
-      listTransactions(userId, { from, to }, 5),
-    ]);
-
+    const [
+    cur,
+    prev,
+    fees,
+    needsCategoryCount,
+    internalTransfers,
+    sync,
+    accounts,
+    daily,
+    categoriesList,
+    breakdown,
+    recentRows,
+    limitCents,
+  ] = await Promise.all([
+    getSummary(userId, from, to),
+    getSummary(userId, prevFrom, prevTo),
+    getFees(userId, from, to),
+    countNeedsCategory(userId, from, to),
+    countInternalTransfers(userId, from, to),
+    getSyncStatus(userId, now),
+    getAccounts(userId),
+    getDailySeries(userId, 30, now),
+    listCategories(userId),
+    getCategoryBreakdown(userId, from, to),
+    listTransactions(userId, { from, to }, 5),
+    getMonthlyLimit(userId),
+  ]);
   const nameById = new Map(categoriesList.map((c) => [c.id, c.name]));
   const spentById = new Map(breakdown.map((r) => [r.categoryId, r.spent]));
 
@@ -239,8 +252,12 @@ export async function getDashboardData(userId: string, monthParam?: string) {
     direction: r.direction as 'in' | 'out',
     amountCents: r.amount,
   }));
+  const localNow = new Date(now.getTime() + ADDIS_OFFSET_MS);
+  const daysInMonth = Math.round((to.getTime() - from.getTime()) / DAY_MS);
+  const daysLeft = isCurrent ? daysInMonth - localNow.getUTCDate() + 1 : null;
 
   return {
+    limit: { limitCents: limitCents ?? null, spentCents: cur.expenses, daysLeft },
     month: key,
     attention: { needsCategoryCount, ...sync },
     overview,
