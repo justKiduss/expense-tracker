@@ -39,7 +39,7 @@ export default function AuthForm({mode}:{mode:'login'|'signup'}){
             const res=await post('/api/auth/login',payload);
             if(!res.ok) return setError(await errorMessage(res));
 
-            router.push('/overview');
+            router.push('/');
             router.refresh();
              } catch {
             setError('Network error, try again');

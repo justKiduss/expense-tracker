@@ -25,7 +25,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
 
   return (
     <div className="flex min-h-screen bg-app text-neutral-100">
-      <AppSidebar activeHref="/overview" userName={userName} userEmail={user.email} />
+      <AppSidebar activeHref="/" userName={userName} userEmail={user.email} />
 
       <div className="flex min-w-0 flex-1 flex-col">
         <OverviewHeader userName={userName} month={data.month} />

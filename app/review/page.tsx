@@ -20,7 +20,7 @@ export default async function ReviewPage({
 
   return (
     <div className="flex min-h-screen bg-app text-neutral-100">
-      <AppSidebar activeHref="/overview" userName={userName} userEmail={user?.email} />
+      <AppSidebar activeHref="/" userName={userName} userEmail={user?.email} />
       <main className="mx-auto w-full max-w-3xl flex-1 space-y-6 p-6">
         <div>
           <h1 className="text-2xl font-semibold">Sort your spending</h1>

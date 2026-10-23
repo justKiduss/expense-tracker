@@ -1,38 +1,58 @@
-"use client"
-import { parseSms,type ParseResult } from "@/lib/sms-parser/parser";
-import { useState } from "react";
+import { redirect } from 'next/navigation';
+import AppSidebar from '@/components/layout/app-sidebar';
+import OverviewHeader from '@/components/layout/overview-header';
+import AttentionStrip from '@/components/dashboard/attention-strip';
+import OverviewCards from '@/components/dashboard/overview-cards';
+import BudgetProgress from '@/components/dashboard/budget-progress';
+import AccountsCard from '@/components/dashboard/accounts-card';
+import SpendingOverview from '@/components/dashboard/spending-overview';
+import CategoryBreakdown from '@/components/dashboard/category-breakdown';
+import RecentTransactions from '@/components/dashboard/recent-transactions';
+import { getDashboardData } from '@/lib/services/dashboard.service';
+import { getCurrentUser } from '@/lib/auth/session';
+import LimitCard from '@/components/dashboard/limit-card';
 
-export default function Home() {
-  const [text,setText]=useState("");
-  const [result,setResult]=useState<ParseResult | null>(null);
+export default async function OverviewPage({ searchParams }: { searchParams: Promise<{ month?: string }> }) {
+  const { month } = await searchParams;
 
-
-  const handleSend=()=>{
-    setResult(
-      parseSms({
-        body:text,
-        receivedAt:new Date(),
-      })
-    )
-  }
+  // --- AUTH: copy the lines from the top of app/dashboard/page.tsx that get the signed-in user ---
+  // They must leave you with `userId` and `email`, and redirect to '/login' when nobody is signed in.
+  // -----------------------------------------------------------------------------------------------
+  const user = await getCurrentUser();
+  if (!user) redirect('/login');
+  const data = await getDashboardData(user?.id, month);
+  const userName = user.email.split('@')[0];
 
   return (
+    <div className="flex min-h-screen bg-app text-neutral-100">
+      <AppSidebar activeHref="/" userName={userName} userEmail={user.email} />
 
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
-      <div className='w-full max-w-lg bg-white p-8 shadow-lg rounded-2xl'>
-          <h1 className="mb-2 text-center text-3xl font-bold text-gray-900">Expense Tracker</h1>
-
-          <div className="space-y-4">
-            <textarea placeholder="Paste an SMS into the box..." className="h-40 w-full resize-none rounded-xl border border-gray-300 p-4 text-sm text-gray-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200" value={text} onChange={(e)=>setText(e.target.value)}/>
-            <button className="w-full rounded-xl bg-blue-600 py-3 font-semibold text-white transition hover:bg-blue-700 active:scale-[0.99]" onClick={handleSend}> 
-                Send 
-             </button>
-             {result && (
-              <pre className="overflow-auto rounded-xl bg-gray-900 p-4 text-sm text-white">
-                {JSON.stringify(result, null, 2)}
-              </pre>
-             )}
+      <div className="flex min-w-0 flex-1 flex-col">
+        <OverviewHeader userName={userName} month={data.month} />
+        <main className="flex-1 space-y-6 p-6">
+          <AttentionStrip {...data.attention} reviewHref='/review'/>
+          <OverviewCards items={data.overview} />
+          <LimitCard {...data.limit} />
+          <div className="grid gap-6 lg:grid-cols-5">
+            <div className="lg:col-span-3">
+              <BudgetProgress items={data.budgets} month={data.month}/>
+            </div>
+            <div className="lg:col-span-2">
+              <AccountsCard {...data.accounts} />
+            </div>
           </div>
+
+          <div className="grid gap-6 lg:grid-cols-5">
+            <div className="lg:col-span-3">
+              <SpendingOverview week={data.week} month={data.month30} />
+            </div>
+            <div className="lg:col-span-2">
+              <CategoryBreakdown items={data.categories} month={data.month} />
+            </div>
+          </div>
+
+          <RecentTransactions items={data.recent} />
+        </main>
       </div>
     </div>
   );

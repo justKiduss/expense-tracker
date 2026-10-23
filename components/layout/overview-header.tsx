@@ -9,7 +9,7 @@ export default function OverviewHeader({ userName, month }: { userName: string; 
     <PageHeader
       userName={userName}
       month={month}
-      onMonthChange={(m) => router.push(`/overview?month=${m}`)}
+      onMonthChange={(m) => router.push(`/?month=${m}`)}
       onAddTransaction={() => {}} // manual add comes later
       onSearchClick={() => {}}
     />
