@@ -1,11 +1,13 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utilis';
 
 export interface BarPoint {
   label: string; // "Oct 15"
+  day?: string; // "2026-10-15", makes the bar a link to that day's payments
   valueCents: number;
 }
 
@@ -17,7 +19,27 @@ function niceMax(maxCents: number) {
   return step * 4;
 }
 
-export default function SpendingOverview({ week, month }: { week: BarPoint[]; month: BarPoint[] }) {
+function monthName(key?: string) {
+  const m = key ? /^(\d{4})-(\d{2})$/.exec(key) : null;
+  if (!m) return '';
+  return new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, 1)).toLocaleDateString('en-US', {
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+
+export default function SpendingOverview({
+  week,
+  month,
+  monthKey,
+  isCurrent = true,
+}: {
+  week: BarPoint[];
+  month: BarPoint[];
+  monthKey?: string;
+  isCurrent?: boolean;
+}) {
   const [range, setRange] = useState<'7d' | '30d'>('7d');
   const data = range === '7d' ? week : month;
 
@@ -29,21 +51,25 @@ export default function SpendingOverview({ week, month }: { week: BarPoint[]; mo
   const tabOn = 'bg-emerald-500/15 text-emerald-400';
   const tabOff = 'text-neutral-400 hover:text-neutral-200';
 
+  const subtitle = isCurrent
+    ? `Your expenses over the last ${range === '7d' ? '7' : '30'} days`
+    : range === '7d'
+      ? `Your expenses in the last 7 days of ${monthName(monthKey)}`
+      : `Your expenses in ${monthName(monthKey)}`;
+
   return (
     <Card className="h-full">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-base font-semibold text-white">Spending Overview</h2>
-          <p className="mt-1 text-xs text-neutral-500">
-            Your expenses over the last {range === '7d' ? '7' : '30'} days
-          </p>
+          <p className="mt-1 text-xs text-neutral-500">{subtitle}</p>
         </div>
         <div className="flex overflow-hidden rounded-lg border border-line">
           <button type="button" onClick={() => setRange('7d')} className={cn(tabBase, range === '7d' ? tabOn : tabOff)}>
             7D
           </button>
           <button type="button" onClick={() => setRange('30d')} className={cn(tabBase, range === '30d' ? tabOn : tabOff)}>
-            30D
+            {isCurrent ? '30D' : 'Month'}
           </button>
           <button type="button" disabled className={cn(tabBase, 'cursor-not-allowed text-neutral-600')} title="Coming soon">
             Custom
@@ -60,17 +86,31 @@ export default function SpendingOverview({ week, month }: { week: BarPoint[]; mo
           </div>
         ))}
 
-        {/* bars */}
+        {/* bars: each column links to that day's payments */}
         <div className={cn('absolute inset-y-0 left-10 right-0 flex items-end', crowded ? 'gap-1' : 'gap-3')}>
-          {data.map((d) => (
-            <div key={d.label} className="flex h-full flex-1 items-end">
+          {data.map((d) => {
+            const bar = (
               <div
                 className={cn('w-full rounded-t-md', d.valueCents === biggest ? 'bg-emerald-400' : 'bg-emerald-500/50')}
                 style={{ height: `${(d.valueCents / top) * 100}%` }}
                 title={`${d.label}: ETB ${(d.valueCents / 100).toFixed(2)}`}
               />
-            </div>
-          ))}
+            );
+            return d.day ? (
+              <Link
+                key={d.label}
+                href={`/transactions?day=${d.day}&type=spent`}
+                aria-label={`${d.label}: ETB ${(d.valueCents / 100).toFixed(2)}. Open payments`}
+                className="flex h-full flex-1 items-end hover:opacity-80"
+              >
+                {bar}
+              </Link>
+            ) : (
+              <div key={d.label} className="flex h-full flex-1 items-end">
+                {bar}
+              </div>
+            );
+          })}
         </div>
       </div>
 

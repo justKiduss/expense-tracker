@@ -174,6 +174,7 @@ async function getDailySeries(userId: string, days: number, endDayMs: number): P
     const d = new Date(startMs + i * DAY_MS);
     return {
       label: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }),
+      day: d.toISOString().slice(0, 10),
       valueCents: byDay.get(d.toISOString().slice(0, 10)) ?? 0,
     };
   });
@@ -187,7 +188,12 @@ export async function getDashboardData(userId: string, monthParam?: string) {
   const elapsed = isCurrent ? now.getTime() - from.getTime() : Infinity;
   const prevTo = new Date(Math.min(prevFrom.getTime() + elapsed, from.getTime()));
   const compareLabel = isCurrent ? 'same days last month' : 'the month before';
-
+  const localNow = new Date(now.getTime() + ADDIS_OFFSET_MS);
+  const daysInMonth = Math.round((to.getTime() - from.getTime()) / DAY_MS);
+  const todayMs = Date.UTC(localNow.getUTCFullYear(), localNow.getUTCMonth(), localNow.getUTCDate());
+  const lastDayMs = to.getTime() + ADDIS_OFFSET_MS - DAY_MS; // last day of the selected month
+  const endDayMs = isCurrent ? todayMs : lastDayMs;
+  const seriesDays = isCurrent ? 30 : daysInMonth;
     const [
     cur,
     prev,
@@ -209,7 +215,7 @@ export async function getDashboardData(userId: string, monthParam?: string) {
     countInternalTransfers(userId, from, to),
     getSyncStatus(userId, now),
     getAccounts(userId),
-    getDailySeries(userId, 30, now),
+    getDailySeries(userId, seriesDays, endDayMs),
     listCategories(userId),
     getCategoryBreakdown(userId, from, to),
     listTransactions(userId, { from, to }, 5),
@@ -250,13 +256,12 @@ export async function getDashboardData(userId: string, monthParam?: string) {
     direction: r.direction as 'in' | 'out',
     amountCents: r.amount,
   }));
-  const localNow = new Date(now.getTime() + ADDIS_OFFSET_MS);
-  const daysInMonth = Math.round((to.getTime() - from.getTime()) / DAY_MS);
   const daysLeft = isCurrent ? daysInMonth - localNow.getUTCDate() + 1 : null;
 
   return {
     limit: { limitCents: limitCents ?? null, spentCents: cur.expenses, daysLeft },
     month: key,
+    isCurrent,
     attention: { needsCategoryCount, ...sync },
     overview,
     budgets,

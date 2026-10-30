@@ -122,7 +122,7 @@ const rules: Rule[] = [
     name: 'telebirr_received_from_person',
     institution: 'TELEBIRR', kind: 'transfer_in', direction: 'in',
     pattern: new RegExp(
-      String.raw`You have received ${etb('amount')} from (?<party>.+?)\s*\([^)]*\) on (?<date>${DATE})\. Your transaction number is (?<ref>[A-Z0-9]+)`,
+      String.raw`You have received ${etb('amount')} from (?<party>.+?)\s*\([^)]*\)(?:\s+\d+)?\s+on (?<date>${DATE})\. Your transaction number is (?<ref>[A-Z0-9]+)`,
     ),
   },
   {
@@ -193,6 +193,14 @@ const rules: Rule[] = [
     description: 'Bill payment',
     pattern: new RegExp(
       String.raw`You have paid ${etb('amount')} to pay bill for \d+ on (?<date>${DATE})\.\s*Your transaction number is (?<ref>[A-Z0-9]+)\.`,
+    ),
+  },
+  {
+    // payment to a biller with a payment number, e.g. Ethiopian Electric Utility
+    name: 'telebirr_payment_to_biller',
+    institution: 'TELEBIRR', kind: 'payment', direction: 'out',
+    pattern: new RegExp(
+      String.raw`You have paid ${etb('amount')} to (?<party>.+?) with Payment number \d+ on (?<date>${DATE})\. The service fee is (?<fees>ETB.+?)\. Your transaction number is (?<ref>[A-Z0-9]+)`,
     ),
   },
   {
@@ -373,6 +381,8 @@ const ignoreRules: { reason: string; pattern: RegExp }[] = [
   { reason: 'promotion', pattern: /YeGena Chewata/ },
   { reason: 'failed_transaction', pattern: /insufficient balance for the requested transaction/ },
   { reason: 'wrong_pin', pattern: /your PIN or password is incorrect/i },
+  { reason: 'balance_inquiry', pattern: /Customer E-Money Account Balance is/i },
+  { reason: 'failed_transaction', pattern: /is insufficient for the transaction/ },
 ];
 
 // ---------- the public function ----------
