@@ -360,6 +360,27 @@ const fixtures: Fixture[] = [
     ignored: 'loan_reminder',
     body: `Dear Kidus,\nYour outstanding telebirr mela for 30 day credit balance of ETB 120.00 is due TODAY. Your available limit is ETB 50.00.  Please deposit to your wallet account and Pay your credit to avoid the 0.5% daily penalty fee.\n\nThank you for using telebirr\nEthio telecom in partnership with Dashen Bank`,
   },
+    // ----- sixth batch: messages from another phone (digits and names are fake) -----
+  {
+    name: 'telebirr received from a person, with an extra number after the brackets',
+    body: `Dear Test\nYou have received ETB 300.00 from Person Z(2519****0009) 123456 on 20/10/2026 10:00:00. Your transaction number is DJM00AAA13. Your current E-Money Account balance is ETB 500.00.${TB_FOOT}`,
+    expect: { kind: 'transfer_in', direction: 'in', amount: 30000, balanceAfter: 50000, reference: 'DJM00AAA13', counterparty: 'Person Z', occurredAt: '2026-10-20T10:00:00+03:00' },
+  },
+  {
+    name: 'telebirr payment to a biller with a payment number',
+    body: `Dear Test\nYou have paid ETB 400.00 to Ethiopian Electric Utility with Payment number 123456789012 on 20/10/2026 11:00:00. The service fee is  ETB 2.00 and  15% VAT on the service fee is ETB 0.30. Your transaction number is DJ00AAA14 Your current telebirr balance is ETB 100.00. To download your payment information please click this link: https://transactioninfo.ethiotelecom.et/receipt/DJ00AAA14${TB_FOOT}`,
+    expect: { kind: 'payment', direction: 'out', amount: 40000, fee: 230, balanceAfter: 10000, reference: 'DJ00AAA14', counterparty: 'Ethiopian Electric Utility', occurredAt: '2026-10-20T11:00:00+03:00' },
+  },
+  {
+    name: 'telebirr balance inquiry is not a transaction',
+    ignored: 'balance_inquiry',
+    body: `Dear Test\nYour telebirr Customer E-Money Account Balance is : ETB 50.00\nCustomer Incentive Account Balance is : ETB 0.00\n${TB_FOOT}`,
+  },
+  {
+    name: 'telebirr "balance is insufficient for the transaction" notice',
+    ignored: 'failed_transaction',
+    body: `Dear Test\nThe balance in account 123456789012345678 (ETB) of account type Customer Incentive Account of identity 251900000000 - Test User is insufficient for the transaction.`,
+  },
 ];
 
 const at = (i: number) => new Date(Date.UTC(2026, 9, 2, 12, 0, i)); // distinct SMS time per message
@@ -384,7 +405,7 @@ for (const [i, f] of fixtures.entries()) {
 test('every real-shaped message is either parsed or deliberately ignored', () => {
   const results = fixtures.map((f, i) => parseSms({ body: f.body, receivedAt: at(i) }));
   assert.equal(results.filter((r) => r.status === 'unknown').length, 0);
-  assert.equal(results.filter((r) => r.status === 'parsed').length, fixtures.length - 13);
+  assert.equal(results.filter((r) => r.status === 'parsed').length, fixtures.length - 15);
 });
 
 test('dedupe keys are unique, including the two identical "debited 100.42" texts', () => {
