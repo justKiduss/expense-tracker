@@ -156,13 +156,11 @@ async function getAccounts(userId: string): Promise<AccountItem[]> {
     .map((x) => x.item);
 }
 
-/** Spending per day for the last `days` days (Addis days), oldest first. Zero-spend days are included. */
-async function getDailySeries(userId: string, days: number, now: Date): Promise<BarPoint[]> {
-  const local = new Date(now.getTime() + ADDIS_OFFSET_MS);
-  const todayUtc = Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate());
-  const startMs = todayUtc - (days - 1) * DAY_MS;
+/** Spending per day for `days` days ending on `endDayMs` (an Addis day as UTC midnight), oldest first. */
+async function getDailySeries(userId: string, days: number, endDayMs: number): Promise<BarPoint[]> {
+  const startMs = endDayMs - (days - 1) * DAY_MS;
   const from = new Date(startMs - ADDIS_OFFSET_MS);
-  const to = new Date(todayUtc + DAY_MS - ADDIS_OFFSET_MS);
+  const to = new Date(endDayMs + DAY_MS - ADDIS_OFFSET_MS);
 
   const dayKey = sql<string>`to_char(${transations.occurredAt} at time zone 'Africa/Addis_Ababa', 'YYYY-MM-DD')`;
   const rows = await db
